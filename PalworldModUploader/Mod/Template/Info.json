@@ -1,0 +1,16 @@
+{
+  "ModName": "MyAwesomeMod",
+  "PackageName": "yourname.MyAwesomeMod",
+  "Author": "yourname",
+  "Thumbnail": "thumbnail.png",
+  "Version": "1.0.0",
+  "Dependencies": [],
+  "InstallRule": [
+    {
+      "Type": "Lua",
+      "Targets": [
+        "."
+      ]
+    }
+  ]
+}  
