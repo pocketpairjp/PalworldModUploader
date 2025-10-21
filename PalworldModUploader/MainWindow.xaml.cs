@@ -391,6 +391,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Check Info.json Version vs last published version
+        if (!ConfirmVersionUpdated(_selectedEntry))
+        {
+            StatusTextBlock.Text = "Upload canceled due to version check.";
+            return;
+        }
+
         // Prompt for change notes before starting upload
         var changeNotesDialog = new ChangeNotesWindow { Owner = this };
         if (changeNotesDialog.ShowDialog() != true)
@@ -478,6 +485,36 @@ public partial class MainWindow : Window
         }
 
         return null;
+    }
+
+    private bool ConfirmVersionUpdated(ModDirectoryEntry entry)
+    {
+        var currentVersion = entry.Info?.Version?.Trim();
+        var lastVersion = entry.Metadata?.LastPublishedVersion;
+
+        if (string.IsNullOrWhiteSpace(currentVersion))
+        {
+            var res = MessageBox.Show(
+                "No Version is specified in Info.json. Are you sure you want to continue uploading?",
+                "Version Missing",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            return res == MessageBoxResult.Yes;
+        }
+
+        if (!string.IsNullOrWhiteSpace(lastVersion) && string.Equals(currentVersion, lastVersion, StringComparison.OrdinalIgnoreCase))
+        {
+            var res = MessageBox.Show(
+                // already subscribed user won't update if version is same
+                $"Info.json Version ({currentVersion}) has not changed since the last published version. There is" +
+                " a risk that the update may not be recognized by Palworld. Do you want to continue?",
+                "Version Missing",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            return res == MessageBoxResult.Yes;
+        }
+
+        return true;
     }
 
     private static string? GetPublishedFileId(ModDirectoryEntry entry)
@@ -650,6 +687,28 @@ public partial class MainWindow : Window
             if (callback.m_eResult == EResult.k_EResultOK)
             {
                 StatusTextBlock.Text = "Workshop item submitted successfully.";
+
+                // Persist last published version and changenote into metadata file
+                try
+                {
+                    if (_currentPack?.Entry is { } entry)
+                    {
+                        var metadata = entry.Metadata ?? new WorkshopMetadata
+                        {
+                            PublishedFileId = entry.PublishedFileId
+                        };
+                        metadata.ChangeNote = _currentPack.ChangeNote;
+                        metadata.LastPublishedVersion = entry.Info?.Version?.Trim();
+                        SaveMetadata(entry.FullPath, metadata);
+                        entry.Metadata = metadata; // update in-memory view model
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Non-fatal: just report in status text
+                    StatusTextBlock.Text = $"Submitted, but failed to update metadata: {ex.Message}";
+                }
+
                 try
                 {
                     var publishedId = callback.m_nPublishedFileId.m_PublishedFileId;
