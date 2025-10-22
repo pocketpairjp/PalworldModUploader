@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -459,6 +460,12 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(entry.Info.PackageName))
         {
             return "PackageName is required in Info.json.";
+        }
+
+        var pkg = entry.Info.PackageName.Trim();
+        if (!Regex.IsMatch(pkg, "^[A-Za-z0-9]+$"))
+        {
+            return "PackageName must contain only alphanumeric characters (A-Z, a-z, 0-9) with no symbols or spaces.";
         }
 
         if (entry.Info.InstallRule is not { Length: > 0 })
