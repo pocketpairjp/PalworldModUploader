@@ -46,6 +46,9 @@ public partial class MainWindow : Window
     private WorkshopModPack? _currentPack;
     private bool _isCreatingWorkshopItem;
 
+    private bool _reloadOnActivatedPending;
+    private bool _isReloadingOnActivate;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -63,6 +66,9 @@ public partial class MainWindow : Window
         _progressTimer.Tick += (_, _) => UpdateProgress();
 
         Loaded += OnLoaded;
+
+        Activated += OnWindowActivated;
+        Deactivated += (_, _) => _reloadOnActivatedPending = true;
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -81,6 +87,43 @@ public partial class MainWindow : Window
         {
             WorkshopDirTextBox.Text = _workshopContentDirectory;
             LoadModsFromDirectory(_workshopContentDirectory);
+        }
+    }
+
+    private void OnWindowActivated(object? sender, EventArgs e)
+    {
+        if (!_reloadOnActivatedPending || _isReloadingOnActivate)
+        {
+            return;
+        }
+
+        _isReloadingOnActivate = true;
+        try
+        {
+            var selectedFullPath = (_selectedEntry ?? ModsDataGrid.SelectedItem as ModDirectoryEntry)?.FullPath;
+
+            DiscoverWorkshopContentDirectory();
+            var currentDirectory = WorkshopDirTextBox.Text;
+            if (!string.IsNullOrWhiteSpace(currentDirectory))
+            {
+                _workshopContentDirectory = currentDirectory;
+                LoadModsFromDirectory(_workshopContentDirectory);
+            }
+
+            if (!string.IsNullOrWhiteSpace(selectedFullPath))
+            {
+                var toSelect = _modEntries.FirstOrDefault(m => string.Equals(m.FullPath, selectedFullPath, StringComparison.OrdinalIgnoreCase));
+                if (toSelect != null)
+                {
+                    ModsDataGrid.SelectedItem = toSelect;
+                    ModsDataGrid.ScrollIntoView(toSelect);
+                }
+            }
+        }
+        finally
+        {
+            _reloadOnActivatedPending = false;
+            _isReloadingOnActivate = false;
         }
     }
 
