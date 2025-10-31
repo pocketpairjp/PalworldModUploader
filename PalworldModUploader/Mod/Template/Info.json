@@ -10,7 +10,7 @@
     {
       "Type": "Lua",
       "Targets": [
-        "./Scripts/"
+        "./Scripts"
       ]
     },
     {
