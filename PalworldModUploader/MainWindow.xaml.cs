@@ -13,6 +13,8 @@ using System.Windows.Threading;
 using PalworldModUploader.Models;
 using PalworldModUploader.ViewModels;
 using Steamworks;
+using System.Windows.Input;
+using System.Security.Cryptography;
 using MessageBox = System.Windows.MessageBox;
 
 namespace PalworldModUploader;
@@ -398,6 +400,70 @@ public partial class MainWindow : Window
         {
             MessageBox.Show("Template directory not found.", "Template Missing", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
+        }
+
+        // SHIFT-Click: bypass Steam and create folder with 10-digit random number
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+        {
+            try
+            {
+                // Generate a unique 10-digit numeric folder name
+                string folderName = GenerateTenDigitId();
+                string targetDirectory = Path.Combine(_workshopContentDirectory, folderName);
+
+                int attempts = 0;
+                while (Directory.Exists(targetDirectory))
+                {
+                    if (++attempts > 10)
+                    {
+                        MessageBox.Show("Failed to create a unique folder name after multiple attempts.", "Creation Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                    folderName = GenerateTenDigitId();
+                    targetDirectory = Path.Combine(_workshopContentDirectory, folderName);
+                }
+
+                CopyDirectory(templatePath, targetDirectory);
+
+                var paksDir = Path.Combine(targetDirectory, "Paks");
+                var logicModsDir = Path.Combine(targetDirectory, "LogicMods");
+                Directory.CreateDirectory(paksDir);
+                Directory.CreateDirectory(logicModsDir);
+
+                // Reload list and select the newly created entry
+                LoadModsFromDirectory(_workshopContentDirectory);
+                var createdEntry = _modEntries.FirstOrDefault(entry =>
+                    string.Equals(entry.FullPath, targetDirectory, StringComparison.OrdinalIgnoreCase));
+                if (createdEntry != null)
+                {
+                    ModsDataGrid.SelectedItem = createdEntry;
+                    ModsDataGrid.ScrollIntoView(createdEntry);
+                }
+
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"\"{targetDirectory}\"",
+                        UseShellExecute = true
+                    };
+                    Process.Start(psi);
+                }
+                catch (Exception ex)
+                {
+                    StatusTextBlock.Text = $"Folder created, but failed to open Explorer: {ex.Message}";
+                    return;
+                }
+
+                StatusTextBlock.Text = $"Local mod folder created (bypass). Folder name: {folderName}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to create local mod folder: {ex.Message}", "Creation Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            return; // Do not proceed to Steam path
         }
 
         _isCreatingWorkshopItem = true;
@@ -842,6 +908,15 @@ public partial class MainWindow : Window
         };
 
         StatusTextBlock.Text = statusMessage;
+    }
+
+    private static string GenerateTenDigitId()
+    {
+        // Create a cryptographically-strong 10-digit numeric string (no leading zero constraint)
+        // Range: 1000000000..9999999999 to ensure 10 digits
+        var bytes = RandomNumberGenerator.GetBytes(8);
+        ulong value = BitConverter.ToUInt64(bytes, 0) % 9000000000UL + 1000000000UL;
+        return value.ToString();
     }
 
     private static void CopyDirectory(string sourceDir, string destinationDir)
