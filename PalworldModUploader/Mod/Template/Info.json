@@ -4,13 +4,26 @@
   "Author": "yourname",
   "Thumbnail": "thumbnail.png",
   "Version": "1.0.0",
+  "MinRevision": 82182,
   "Dependencies": [],
   "InstallRule": [
     {
       "Type": "Lua",
       "Targets": [
-        "."
+        "./Scripts/"
+      ]
+    },
+    {
+      "Type": "Paks",
+      "Targets": [
+        "./Paks/"
+      ]
+    },
+    {
+      "Type": "LogicMods",
+      "Targets": [
+        "./LogicMods/"
       ]
     }
   ]
-}  
+}
