@@ -279,7 +279,6 @@ public partial class MainWindow : Window
         ModNameTextBlock.Text = _selectedEntry.ModName ?? "(No ModName)";
         PackageNameTextBlock.Text = _selectedEntry.PackageName ?? "(No PackageName)";
         AuthorTextBlock.Text = _selectedEntry.Author ?? "(No Author)";
-        DescriptionTextBox.Text = _selectedEntry.Description ?? "(No Description)";
 
         if (_selectedEntry.InfoLoadError is { Length: > 0 })
         {
@@ -311,7 +310,6 @@ public partial class MainWindow : Window
         ModNameTextBlock.Text = string.Empty;
         PackageNameTextBlock.Text = string.Empty;
         AuthorTextBlock.Text = string.Empty;
-        DescriptionTextBox.Text = string.Empty;
         ThumbnailImage.Source = null;
         UploadButton.IsEnabled = false;
         OpenModDirectoryButton.IsEnabled = false;
@@ -654,11 +652,6 @@ public partial class MainWindow : Window
 
         var info = pack.Entry.Info;
         SteamUGC.SetItemTitle(handle, info.ModName ?? info.PackageName ?? "Palworld Mod");
-
-        if (!string.IsNullOrWhiteSpace(info.Description))
-        {
-            SteamUGC.SetItemDescription(handle, info.Description);
-        }
 
         SteamUGC.SetItemContent(handle, pack.Entry.FullPath);
 

@@ -41,7 +41,6 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
             OnPropertyChanged(nameof(Info));
             OnPropertyChanged(nameof(ModName));
             OnPropertyChanged(nameof(Author));
-            OnPropertyChanged(nameof(Description));
             OnPropertyChanged(nameof(PackageName));
             OnPropertyChanged(nameof(ThumbnailRelativePath));
         }
@@ -112,8 +111,6 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
     public string? ModName => Info?.ModName;
 
     public string? Author => Info?.Author;
-
-    public string? Description => Info?.Description;
 
     public string? PackageName => Info?.PackageName;
 

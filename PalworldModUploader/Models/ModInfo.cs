@@ -22,8 +22,6 @@ public sealed class ModInfo
     [JsonPropertyName("Author")]
     public string? Author { get; set; }
 
-    [JsonPropertyName("Description")]
-    public string? Description { get; set; }
 
     [JsonPropertyName("Dependencies")]
     public string[]? Dependencies { get; set; }
