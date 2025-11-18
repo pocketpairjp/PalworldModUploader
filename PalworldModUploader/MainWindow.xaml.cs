@@ -25,7 +25,7 @@ namespace PalworldModUploader;
 public partial class MainWindow : Window
 {
     private const uint PalworldAppId = 1623730;
-    private static readonly string[] ValidInstallRuleTypes = { "Lua", "Paks", "LogicMods", "UE4SS" };
+    private static readonly string[] ValidInstallRuleTypes = { "Lua", "Paks", "LogicMods", "UE4SS", "PalSchema" };
     private const string HelpUrl = "https://github.com/pocketpairjp/PalworldModUploader/blob/main/README.md";
 
     private readonly ObservableCollection<ModDirectoryEntry> _modEntries = new();
@@ -427,8 +427,10 @@ public partial class MainWindow : Window
 
                 var paksDir = Path.Combine(targetDirectory, "Paks");
                 var logicModsDir = Path.Combine(targetDirectory, "LogicMods");
+                var palSchemaDir = Path.Combine(targetDirectory, "PalSchema");
                 Directory.CreateDirectory(paksDir);
                 Directory.CreateDirectory(logicModsDir);
+                Directory.CreateDirectory(palSchemaDir);
 
                 // Reload list and select the newly created entry
                 LoadModsFromDirectory(_workshopContentDirectory);
@@ -719,8 +721,10 @@ public partial class MainWindow : Window
 
                 var paksDir = Path.Combine(targetDirectory, "Paks");
                 var logicModsDir = Path.Combine(targetDirectory, "LogicMods");
+                var palSchemaDir = Path.Combine(targetDirectory, "PalSchema");
                 Directory.CreateDirectory(paksDir);
                 Directory.CreateDirectory(logicModsDir);
+                Directory.CreateDirectory(palSchemaDir);
             }
             catch (Exception ex)
             {
