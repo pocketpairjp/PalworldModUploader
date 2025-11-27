@@ -180,29 +180,113 @@
                     BorderBrush="#FFBDBDBD"
                     BorderThickness="1"
                     Padding="12">
-                <StackPanel>
-                    <Image x:Name="ThumbnailImage"
-                           Height="180"
-                           Stretch="Uniform" />
-                    <TextBlock Text="Mod Name"
-                               Margin="0,12,0,0"
-                               FontWeight="Bold" />
-                    <TextBlock x:Name="ModNameTextBlock"
-                               TextWrapping="Wrap"
-                               Margin="0,4,0,0" />
-                    <TextBlock Text="Package Name"
-                               Margin="0,12,0,0"
-                               FontWeight="Bold" />
-                    <TextBlock x:Name="PackageNameTextBlock"
-                               TextWrapping="Wrap"
-                               Margin="0,4,0,0" />
-                    <TextBlock Text="Author"
-                               Margin="0,12,0,0"
-                               FontWeight="Bold" />
-                    <TextBlock x:Name="AuthorTextBlock"
-                               TextWrapping="Wrap"
-                               Margin="0,4,0,0" />
-                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Thumbnail with D&D support -->
+                        <Border x:Name="ThumbnailDropArea"
+                                Height="180"
+                                BorderBrush="#CCCCCC"
+                                BorderThickness="2"
+                                CornerRadius="8"
+                                Background="#F8F8F8"
+                                AllowDrop="True"
+                                Drop="ThumbnailDropArea_Drop"
+                                DragOver="ThumbnailDropArea_DragOver"
+                                DragLeave="ThumbnailDropArea_DragLeave"
+                                MouseLeftButtonUp="ThumbnailDropArea_Click"
+                                Cursor="Hand">
+                            <Grid>
+                                <Image x:Name="ThumbnailImage"
+                                       Stretch="Uniform" />
+                                <StackPanel x:Name="ThumbnailPlaceholder"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            Visibility="Collapsed">
+                                    <TextBlock Text="Drop image here"
+                                               HorizontalAlignment="Center"
+                                               Foreground="#888888"
+                                               FontSize="14" />
+                                    <TextBlock Text="or click to select"
+                                               HorizontalAlignment="Center"
+                                               Foreground="#AAAAAA"
+                                               FontSize="12"
+                                               Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Mod Name -->
+                        <TextBlock Text="Mod Name"
+                                   Margin="0,12,0,0"
+                                   FontWeight="Bold" />
+                        <TextBox x:Name="ModNameTextBox"
+                                 Margin="0,4,0,0"
+                                 IsEnabled="False"
+                                 TextChanged="ModInfoField_TextChanged" />
+
+                        <!-- Package Name -->
+                        <TextBlock Text="Package Name"
+                                   Margin="0,12,0,0"
+                                   FontWeight="Bold" />
+                        <TextBox x:Name="PackageNameTextBox"
+                                 Margin="0,4,0,0"
+                                 IsEnabled="False"
+                                 TextChanged="ModInfoField_TextChanged" />
+
+                        <!-- Version -->
+                        <TextBlock Text="Version"
+                                   Margin="0,12,0,0"
+                                   FontWeight="Bold" />
+                        <TextBox x:Name="VersionTextBox"
+                                 Margin="0,4,0,0"
+                                 IsEnabled="False"
+                                 TextChanged="ModInfoField_TextChanged" />
+
+                        <!-- MinRevision -->
+                        <TextBlock Text="MinRevision"
+                                   Margin="0,12,0,0"
+                                   FontWeight="Bold" />
+                        <TextBox x:Name="MinRevisionTextBox"
+                                 Margin="0,4,0,0"
+                                 IsEnabled="False"
+                                 TextChanged="ModInfoField_TextChanged" />
+
+                        <!-- Author -->
+                        <TextBlock Text="Author"
+                                   Margin="0,12,0,0"
+                                   FontWeight="Bold" />
+                        <TextBox x:Name="AuthorTextBox"
+                                 Margin="0,4,0,0"
+                                 IsEnabled="False"
+                                 TextChanged="ModInfoField_TextChanged" />
+
+                        <!-- Action Buttons for Selected Mod -->
+                        <Button x:Name="SaveModInfoButton"
+                                Content="Save Info.json"
+                                Height="32"
+                                Margin="0,16,0,0"
+                                IsEnabled="False"
+                                Click="SaveModInfoButton_Click" />
+                        <Button x:Name="OpenModDirectoryButton"
+                                Content="Open Mod Directory"
+                                Height="32"
+                                Margin="0,8,0,0"
+                                IsEnabled="False"
+                                Click="OpenModDirectoryButton_Click" />
+                        <Button x:Name="OpenInSteamButton"
+                                Content="Open In Steam"
+                                Height="32"
+                                Margin="0,8,0,0"
+                                IsEnabled="False"
+                                Click="OpenInSteamButton_Click" />
+                        <Button x:Name="UploadButton"
+                                Content="Upload To Steam"
+                                Height="32"
+                                Margin="0,8,0,0"
+                                IsEnabled="False"
+                                Click="UploadButton_Click" />
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 
@@ -216,27 +300,6 @@
                     Height="32"
                     Margin="0,0,12,0"
                     Click="CreateNewModButton_Click" />
-            <Button x:Name="OpenModDirectoryButton"
-                    Content="Open Mod Directory"
-                    Width="160"
-                    Height="32"
-                    Margin="0,0,12,0"
-                    IsEnabled="False"
-                    Click="OpenModDirectoryButton_Click" />
-            <Button x:Name="OpenInSteamButton"
-                    Content="Open In Steam"
-                    Width="130"
-                    Height="32"
-                    Margin="0,0,12,0"
-                    IsEnabled="False"
-                    Click="OpenInSteamButton_Click" />
-            <Button x:Name="UploadButton"
-                    Content="Upload To Steam"
-                    Width="140"
-                    Height="32"
-                    Margin="0,0,12,0"
-                    IsEnabled="False"
-                    Click="UploadButton_Click" />
             <Button Content="Guide"
                     Width="90"
                     Height="32"

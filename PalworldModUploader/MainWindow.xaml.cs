@@ -15,6 +15,7 @@ using PalworldModUploader.ViewModels;
 using Steamworks;
 using System.Windows.Input;
 using System.Security.Cryptography;
+using System.Windows.Media;
 using MessageBox = System.Windows.MessageBox;
 
 namespace PalworldModUploader;
@@ -50,6 +51,8 @@ public partial class MainWindow : Window
 
     private bool _reloadOnActivatedPending;
     private bool _isReloadingOnActivate;
+    private bool _isUpdatingModDetails;
+    private bool _hasUnsavedChanges;
 
     public MainWindow()
     {
@@ -270,50 +273,99 @@ public partial class MainWindow : Window
 
     private void UpdateModDetails()
     {
-        if (_selectedEntry == null)
+        _isUpdatingModDetails = true;
+        try
         {
-            ClearModDetails();
-            return;
+            if (_selectedEntry == null)
+            {
+                ClearModDetails();
+                return;
+            }
+
+            // Fill text boxes with current values
+            ModNameTextBox.Text = _selectedEntry.ModName ?? string.Empty;
+            PackageNameTextBox.Text = _selectedEntry.PackageName ?? string.Empty;
+            VersionTextBox.Text = _selectedEntry.Info?.Version ?? string.Empty;
+            MinRevisionTextBox.Text = _selectedEntry.Info?.MinRevision?.ToString() ?? string.Empty;
+            AuthorTextBox.Text = _selectedEntry.Author ?? string.Empty;
+
+            if (_selectedEntry.InfoLoadError is { Length: > 0 })
+            {
+                StatusTextBlock.Text = $"Info.json parse error: {_selectedEntry.InfoLoadError}";
+            }
+
+            var thumbnailPath = _selectedEntry.GetThumbnailFullPath();
+            if (!string.IsNullOrWhiteSpace(thumbnailPath) && File.Exists(thumbnailPath))
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.UriSource = new Uri(thumbnailPath);
+                bitmap.EndInit();
+                ThumbnailImage.Source = bitmap;
+                ThumbnailPlaceholder.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                ThumbnailImage.Source = null;
+                ThumbnailPlaceholder.Visibility = Visibility.Visible;
+            }
+
+            // Enable editing only for non-subscribed mods
+            var canEdit = !_selectedEntry.IsSubscribed;
+            ModNameTextBox.IsEnabled = canEdit;
+            PackageNameTextBox.IsEnabled = canEdit;
+            VersionTextBox.IsEnabled = canEdit;
+            MinRevisionTextBox.IsEnabled = canEdit;
+            AuthorTextBox.IsEnabled = canEdit;
+            ThumbnailDropArea.IsEnabled = canEdit;
+            ThumbnailDropArea.AllowDrop = canEdit;
+            ThumbnailDropArea.Cursor = canEdit ? System.Windows.Input.Cursors.Hand : System.Windows.Input.Cursors.Arrow;
+
+            UploadButton.IsEnabled = !_selectedEntry.IsSubscribed;
+            OpenModDirectoryButton.IsEnabled = true;
+            OpenInSteamButton.IsEnabled = true;
+            SaveModInfoButton.IsEnabled = false;
+            _hasUnsavedChanges = false;
         }
-
-        ModNameTextBlock.Text = _selectedEntry.ModName ?? "(No ModName)";
-        PackageNameTextBlock.Text = _selectedEntry.PackageName ?? "(No PackageName)";
-        AuthorTextBlock.Text = _selectedEntry.Author ?? "(No Author)";
-
-        if (_selectedEntry.InfoLoadError is { Length: > 0 })
+        finally
         {
-            StatusTextBlock.Text = $"Info.json parse error: {_selectedEntry.InfoLoadError}";
+            _isUpdatingModDetails = false;
         }
-
-        var thumbnailPath = _selectedEntry.GetThumbnailFullPath();
-        if (!string.IsNullOrWhiteSpace(thumbnailPath) && File.Exists(thumbnailPath))
-        {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.UriSource = new Uri(thumbnailPath);
-            bitmap.EndInit();
-            ThumbnailImage.Source = bitmap;
-        }
-        else
-        {
-            ThumbnailImage.Source = null;
-        }
-
-        UploadButton.IsEnabled = !_selectedEntry.IsSubscribed;
-        OpenModDirectoryButton.IsEnabled = true;
-        OpenInSteamButton.IsEnabled = true;
     }
 
     private void ClearModDetails()
     {
-        ModNameTextBlock.Text = string.Empty;
-        PackageNameTextBlock.Text = string.Empty;
-        AuthorTextBlock.Text = string.Empty;
-        ThumbnailImage.Source = null;
-        UploadButton.IsEnabled = false;
-        OpenModDirectoryButton.IsEnabled = false;
-        OpenInSteamButton.IsEnabled = false;
+        _isUpdatingModDetails = true;
+        try
+        {
+            ModNameTextBox.Text = string.Empty;
+            PackageNameTextBox.Text = string.Empty;
+            VersionTextBox.Text = string.Empty;
+            MinRevisionTextBox.Text = string.Empty;
+            AuthorTextBox.Text = string.Empty;
+            ThumbnailImage.Source = null;
+            ThumbnailPlaceholder.Visibility = Visibility.Visible;
+
+            ModNameTextBox.IsEnabled = false;
+            PackageNameTextBox.IsEnabled = false;
+            VersionTextBox.IsEnabled = false;
+            MinRevisionTextBox.IsEnabled = false;
+            AuthorTextBox.IsEnabled = false;
+            ThumbnailDropArea.IsEnabled = false;
+            ThumbnailDropArea.AllowDrop = false;
+            ThumbnailDropArea.Cursor = System.Windows.Input.Cursors.Arrow;
+
+            UploadButton.IsEnabled = false;
+            OpenModDirectoryButton.IsEnabled = false;
+            OpenInSteamButton.IsEnabled = false;
+            SaveModInfoButton.IsEnabled = false;
+            _hasUnsavedChanges = false;
+        }
+        finally
+        {
+            _isUpdatingModDetails = false;
+        }
     }
 
     private void SelectWorkshopDirectoryButton_Click(object sender, RoutedEventArgs e)
@@ -938,4 +990,234 @@ public partial class MainWindow : Window
             CopyDirectory(subDirectory.FullName, targetSubDir);
         }
     }
+
+    #region Thumbnail D&D and Selection
+
+    private void ThumbnailDropArea_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        {
+            e.Effects = System.Windows.DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+        {
+            var files = (string[])e.Data.GetData(System.Windows.DataFormats.FileDrop);
+            if (files is { Length: 1 } && IsImageFile(files[0]))
+            {
+                e.Effects = System.Windows.DragDropEffects.Copy;
+                ThumbnailDropArea.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(122, 162, 247));
+                ThumbnailDropArea.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(243, 246, 251));
+            }
+            else
+            {
+                e.Effects = System.Windows.DragDropEffects.None;
+            }
+        }
+        else
+        {
+            e.Effects = System.Windows.DragDropEffects.None;
+        }
+
+        e.Handled = true;
+    }
+
+    private void ThumbnailDropArea_DragLeave(object sender, System.Windows.DragEventArgs e)
+    {
+        ThumbnailDropArea.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(204, 204, 204));
+        ThumbnailDropArea.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 248, 248));
+    }
+
+    private void ThumbnailDropArea_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        ThumbnailDropArea.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(204, 204, 204));
+        ThumbnailDropArea.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 248, 248));
+
+        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        {
+            return;
+        }
+
+        if (!e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+        {
+            return;
+        }
+
+        var files = (string[])e.Data.GetData(System.Windows.DataFormats.FileDrop);
+        if (files is not { Length: 1 })
+        {
+            StatusTextBlock.Text = "Please drop a single image file.";
+            return;
+        }
+
+        var filePath = files[0];
+        if (!IsImageFile(filePath))
+        {
+            StatusTextBlock.Text = "Unsupported file type. Please use PNG, JPG, or GIF.";
+            return;
+        }
+
+        SetThumbnailImage(filePath);
+    }
+
+    private void ThumbnailDropArea_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        {
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Select Thumbnail Image",
+            Filter = "Image Files|*.png;*.jpg;*.jpeg;*.gif|PNG Files|*.png|JPEG Files|*.jpg;*.jpeg|GIF Files|*.gif",
+            FilterIndex = 1
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        SetThumbnailImage(dialog.FileName);
+    }
+
+    private void SetThumbnailImage(string sourcePath)
+    {
+        if (_selectedEntry == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
+            var thumbnailFileName = $"thumbnail{extension}";
+            var targetPath = Path.Combine(_selectedEntry.FullPath, thumbnailFileName);
+
+            // Copy the image to the mod directory
+            File.Copy(sourcePath, targetPath, true);
+
+            // Update Info.json thumbnail field
+            if (_selectedEntry.Info != null)
+            {
+                _selectedEntry.Info.Thumbnail = thumbnailFileName;
+            }
+
+            // Reload the image
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.UriSource = new Uri(targetPath);
+            bitmap.EndInit();
+            ThumbnailImage.Source = bitmap;
+            ThumbnailPlaceholder.Visibility = Visibility.Collapsed;
+
+            _hasUnsavedChanges = true;
+            SaveModInfoButton.IsEnabled = true;
+            StatusTextBlock.Text = $"Thumbnail set: {thumbnailFileName}";
+        }
+        catch (Exception ex)
+        {
+            StatusTextBlock.Text = $"Failed to set thumbnail: {ex.Message}";
+        }
+    }
+
+    private static bool IsImageFile(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        return extension is ".png" or ".jpg" or ".jpeg" or ".gif";
+    }
+
+    #endregion
+
+    #region Mod Info Editing
+
+    private void ModInfoField_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isUpdatingModDetails || _selectedEntry == null)
+        {
+            return;
+        }
+
+        _hasUnsavedChanges = true;
+        SaveModInfoButton.IsEnabled = true;
+    }
+
+    private void SaveModInfoButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedEntry == null)
+        {
+            MessageBox.Show("No mod selected.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (_selectedEntry.IsSubscribed)
+        {
+            MessageBox.Show("Cannot modify subscribed mods.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        // Validate MinRevision is a valid integer if provided
+        int? minRevision = null;
+        var minRevisionText = MinRevisionTextBox.Text.Trim();
+        if (!string.IsNullOrEmpty(minRevisionText))
+        {
+            if (!int.TryParse(minRevisionText, out var parsedRevision))
+            {
+                MessageBox.Show("MinRevision must be a valid integer.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            minRevision = parsedRevision;
+        }
+
+        try
+        {
+            var infoPath = Path.Combine(_selectedEntry.FullPath, "Info.json");
+
+            // Load existing Info.json or create new one
+            ModInfo info;
+            if (File.Exists(infoPath))
+            {
+                using var readStream = File.OpenRead(infoPath);
+                info = JsonSerializer.Deserialize<ModInfo>(readStream, _jsonOptions) ?? new ModInfo();
+            }
+            else
+            {
+                info = new ModInfo();
+            }
+
+            // Update fields from text boxes
+            info.ModName = ModNameTextBox.Text.Trim();
+            info.PackageName = PackageNameTextBox.Text.Trim();
+            info.Version = VersionTextBox.Text.Trim();
+            info.MinRevision = minRevision;
+            info.Author = AuthorTextBox.Text.Trim();
+
+            // Preserve thumbnail from current state if changed
+            if (_selectedEntry.Info?.Thumbnail != null)
+            {
+                info.Thumbnail = _selectedEntry.Info.Thumbnail;
+            }
+
+            // Serialize and save
+            var json = JsonSerializer.Serialize(info, _jsonOptions);
+            File.WriteAllText(infoPath, json);
+
+            // Update in-memory entry
+            _selectedEntry.Info = info;
+
+            _hasUnsavedChanges = false;
+            SaveModInfoButton.IsEnabled = false;
+            StatusTextBlock.Text = "Info.json saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to save Info.json: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    #endregion
 }
