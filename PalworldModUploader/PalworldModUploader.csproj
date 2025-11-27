@@ -26,13 +26,13 @@
       <None Update="steam_appid.txt">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="Mod\Template\Info.json">
+      <None Update="thumbnail.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="Mod\Template\Scripts\main.lua">
+      <None Update="docs\README-EN.md">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="Mod\Template\thumbnail.png">
+      <None Update="docs\README-JA.md">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>

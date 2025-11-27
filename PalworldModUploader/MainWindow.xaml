@@ -176,118 +176,183 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <Border Grid.Column="1"
-                    BorderBrush="#FFBDBDBD"
-                    BorderThickness="1"
-                    Padding="12">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <!-- Thumbnail with D&D support -->
-                        <Border x:Name="ThumbnailDropArea"
-                                Height="180"
-                                BorderBrush="#CCCCCC"
-                                BorderThickness="2"
-                                CornerRadius="8"
-                                Background="#F8F8F8"
-                                AllowDrop="True"
-                                Drop="ThumbnailDropArea_Drop"
-                                DragOver="ThumbnailDropArea_DragOver"
-                                DragLeave="ThumbnailDropArea_DragLeave"
-                                MouseLeftButtonUp="ThumbnailDropArea_Click"
-                                Cursor="Hand">
-                            <Grid>
-                                <Image x:Name="ThumbnailImage"
-                                       Stretch="Uniform" />
-                                <StackPanel x:Name="ThumbnailPlaceholder"
-                                            VerticalAlignment="Center"
-                                            HorizontalAlignment="Center"
-                                            Visibility="Collapsed">
-                                    <TextBlock Text="Drop image here"
-                                               HorizontalAlignment="Center"
-                                               Foreground="#888888"
-                                               FontSize="14" />
-                                    <TextBlock Text="or click to select"
-                                               HorizontalAlignment="Center"
-                                               Foreground="#AAAAAA"
-                                               FontSize="12"
-                                               Margin="0,4,0,0" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                        <!-- Mod Name -->
-                        <TextBlock Text="Mod Name"
-                                   Margin="0,12,0,0"
-                                   FontWeight="Bold" />
-                        <TextBox x:Name="ModNameTextBox"
-                                 Margin="0,4,0,0"
-                                 IsEnabled="False"
-                                 TextChanged="ModInfoField_TextChanged" />
+                <Border Grid.Row="0"
+                        BorderBrush="#FFBDBDBD"
+                        BorderThickness="1"
+                        Padding="12">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Thumbnail with D&D support -->
+                            <Border x:Name="ThumbnailDropArea"
+                                    Height="180"
+                                    BorderBrush="#CCCCCC"
+                                    BorderThickness="2"
+                                    CornerRadius="8"
+                                    Background="#F8F8F8"
+                                    AllowDrop="True"
+                                    Drop="ThumbnailDropArea_Drop"
+                                    DragOver="ThumbnailDropArea_DragOver"
+                                    DragLeave="ThumbnailDropArea_DragLeave"
+                                    MouseLeftButtonUp="ThumbnailDropArea_Click"
+                                    Cursor="Hand">
+                                <Grid>
+                                    <Image x:Name="ThumbnailImage"
+                                           Stretch="Uniform" />
+                                    <StackPanel x:Name="ThumbnailPlaceholder"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Center"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="Drop image here"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="#888888"
+                                                   FontSize="14" />
+                                        <TextBlock Text="or click to select"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="#AAAAAA"
+                                                   FontSize="12"
+                                                   Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                        <!-- Package Name -->
-                        <TextBlock Text="Package Name"
-                                   Margin="0,12,0,0"
-                                   FontWeight="Bold" />
-                        <TextBox x:Name="PackageNameTextBox"
-                                 Margin="0,4,0,0"
-                                 IsEnabled="False"
-                                 TextChanged="ModInfoField_TextChanged" />
+                            <!-- Mod Name -->
+                            <TextBlock Text="Mod Name"
+                                       Margin="0,12,0,0"
+                                       FontWeight="Bold" />
+                            <TextBox x:Name="ModNameTextBox"
+                                     Margin="0,4,0,0"
+                                     IsEnabled="False"
+                                     TextChanged="ModInfoField_TextChanged" />
 
-                        <!-- Version -->
-                        <TextBlock Text="Version"
-                                   Margin="0,12,0,0"
-                                   FontWeight="Bold" />
-                        <TextBox x:Name="VersionTextBox"
-                                 Margin="0,4,0,0"
-                                 IsEnabled="False"
-                                 TextChanged="ModInfoField_TextChanged" />
+                            <!-- Package Name -->
+                            <TextBlock Text="Package Name"
+                                       Margin="0,12,0,0"
+                                       FontWeight="Bold" />
+                            <TextBox x:Name="PackageNameTextBox"
+                                     Margin="0,4,0,0"
+                                     IsEnabled="False"
+                                     TextChanged="ModInfoField_TextChanged" />
 
-                        <!-- MinRevision -->
-                        <TextBlock Text="MinRevision"
-                                   Margin="0,12,0,0"
-                                   FontWeight="Bold" />
-                        <TextBox x:Name="MinRevisionTextBox"
-                                 Margin="0,4,0,0"
-                                 IsEnabled="False"
-                                 TextChanged="ModInfoField_TextChanged" />
+                            <!-- Version -->
+                            <TextBlock Text="Version"
+                                       Margin="0,12,0,0"
+                                       FontWeight="Bold" />
+                            <TextBox x:Name="VersionTextBox"
+                                     Margin="0,4,0,0"
+                                     IsEnabled="False"
+                                     TextChanged="ModInfoField_TextChanged" />
 
-                        <!-- Author -->
-                        <TextBlock Text="Author"
-                                   Margin="0,12,0,0"
-                                   FontWeight="Bold" />
-                        <TextBox x:Name="AuthorTextBox"
-                                 Margin="0,4,0,0"
-                                 IsEnabled="False"
-                                 TextChanged="ModInfoField_TextChanged" />
+                            <!-- MinRevision -->
+                            <TextBlock Text="MinRevision"
+                                       Margin="0,12,0,0"
+                                       FontWeight="Bold" />
+                            <TextBox x:Name="MinRevisionTextBox"
+                                     Margin="0,4,0,0"
+                                     IsEnabled="False"
+                                     TextChanged="ModInfoField_TextChanged" />
 
-                        <!-- Action Buttons for Selected Mod -->
-                        <Button x:Name="SaveModInfoButton"
-                                Content="Save Info.json"
-                                Height="32"
-                                Margin="0,16,0,0"
-                                IsEnabled="False"
-                                Click="SaveModInfoButton_Click" />
-                        <Button x:Name="OpenModDirectoryButton"
-                                Content="Open Mod Directory"
-                                Height="32"
-                                Margin="0,8,0,0"
-                                IsEnabled="False"
-                                Click="OpenModDirectoryButton_Click" />
-                        <Button x:Name="OpenInSteamButton"
-                                Content="Open In Steam"
-                                Height="32"
-                                Margin="0,8,0,0"
-                                IsEnabled="False"
-                                Click="OpenInSteamButton_Click" />
-                        <Button x:Name="UploadButton"
-                                Content="Upload To Steam"
-                                Height="32"
-                                Margin="0,8,0,0"
-                                IsEnabled="False"
-                                Click="UploadButton_Click" />
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
+                            <!-- Author -->
+                            <TextBlock Text="Author"
+                                       Margin="0,12,0,0"
+                                       FontWeight="Bold" />
+                            <TextBox x:Name="AuthorTextBox"
+                                     Margin="0,4,0,0"
+                                     IsEnabled="False"
+                                     TextChanged="ModInfoField_TextChanged" />
+
+                            <!-- Install Rule Types -->
+                            <TextBlock Text="Install Rule Types"
+                                       Margin="0,16,0,0"
+                                       FontWeight="Bold" />
+                            <TextBlock x:Name="InstallRuleManualWarning"
+                                       Text="Manually modified (edit Info.json directly)"
+                                       Margin="0,4,0,0"
+                                       Foreground="#D97706"
+                                       FontStyle="Italic"
+                                       Visibility="Collapsed" />
+                            <StackPanel Margin="0,4,0,0">
+                                <CheckBox x:Name="LuaTypeCheckBox"
+                                          Content="Lua (Scripts)"
+                                          IsEnabled="False"
+                                          Checked="InstallRuleCheckBox_Changed"
+                                          Unchecked="InstallRuleCheckBox_Changed" />
+                                <CheckBox x:Name="PaksTypeCheckBox"
+                                          Content="Paks"
+                                          IsEnabled="False"
+                                          Margin="0,4,0,0"
+                                          Checked="InstallRuleCheckBox_Changed"
+                                          Unchecked="InstallRuleCheckBox_Changed" />
+                                <CheckBox x:Name="LogicModsTypeCheckBox"
+                                          Content="LogicMods"
+                                          IsEnabled="False"
+                                          Margin="0,4,0,0"
+                                          Checked="InstallRuleCheckBox_Changed"
+                                          Unchecked="InstallRuleCheckBox_Changed" />
+                                <CheckBox x:Name="PalSchemaTypeCheckBox"
+                                          Content="PalSchema"
+                                          IsEnabled="False"
+                                          Margin="0,4,0,0"
+                                          Checked="InstallRuleCheckBox_Changed"
+                                          Unchecked="InstallRuleCheckBox_Changed" />
+                            </StackPanel>
+
+                            <!-- Dependencies -->
+                            <TextBlock Text="Dependencies"
+                                       Margin="0,16,0,0"
+                                       FontWeight="Bold" />
+                            <DockPanel Margin="0,4,0,0">
+                                <Button x:Name="EditDependenciesButton"
+                                        Content="..."
+                                        DockPanel.Dock="Right"
+                                        Width="40"
+                                        Height="24"
+                                        Padding="0"
+                                        Margin="8,0,0,0"
+                                        IsEnabled="False"
+                                        Click="EditDependenciesButton_Click" />
+                                <TextBox x:Name="DependenciesTextBox"
+                                         IsReadOnly="True"
+                                         Background="#F5F5F5"
+                                         VerticalContentAlignment="Center" />
+                            </DockPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Action Buttons - Fixed at bottom -->
+                <StackPanel Grid.Row="1" Margin="0,8,0,0">
+                    <Button x:Name="SaveModInfoButton"
+                            Content="Save Info.json"
+                            Height="32"
+                            Margin="0,0,0,0"
+                            IsEnabled="False"
+                            Click="SaveModInfoButton_Click" />
+                    <Button x:Name="OpenModDirectoryButton"
+                            Content="Open Mod Directory"
+                            Height="32"
+                            Margin="0,8,0,0"
+                            IsEnabled="False"
+                            Click="OpenModDirectoryButton_Click" />
+                    <Button x:Name="OpenInSteamButton"
+                            Content="Open In Steam"
+                            Height="32"
+                            Margin="0,8,0,0"
+                            IsEnabled="False"
+                            Click="OpenInSteamButton_Click" />
+                    <Button x:Name="UploadButton"
+                            Content="Upload To Steam"
+                            Height="32"
+                            Margin="0,8,0,0"
+                            IsEnabled="False"
+                            Click="UploadButton_Click" />
+                </StackPanel>
+            </Grid>
         </Grid>
 
         <!-- Action buttons -->

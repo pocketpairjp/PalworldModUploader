@@ -27,6 +27,15 @@ public partial class MainWindow : Window
 {
     private const uint PalworldAppId = 1623730;
     private static readonly string[] ValidInstallRuleTypes = { "Lua", "Paks", "LogicMods", "UE4SS", "PalSchema" };
+
+    // Expected default targets for each supported InstallRule type (used to detect manual modifications)
+    private static readonly Dictionary<string, string[]> ExpectedInstallRuleTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Lua", new[] { "./Scripts" } },
+        { "Paks", new[] { "./Paks/" } },
+        { "LogicMods", new[] { "./LogicMods/" } },
+        { "PalSchema", new[] { "./PalSchema/" } }
+    };
     private const string HelpUrl = "https://github.com/pocketpairjp/PalworldModUploader/blob/main/README.md";
 
     private readonly ObservableCollection<ModDirectoryEntry> _modEntries = new();
@@ -53,6 +62,13 @@ public partial class MainWindow : Window
     private bool _isReloadingOnActivate;
     private bool _isUpdatingModDetails;
     private bool _hasUnsavedChanges;
+    private string[]? _selectedDependencies;
+
+    // Install rule type selections for new mod creation
+    private bool _newModLuaSelected;
+    private bool _newModPaksSelected;
+    private bool _newModLogicModsSelected;
+    private bool _newModPalSchemaSelected;
 
     public MainWindow()
     {
@@ -300,6 +316,7 @@ public partial class MainWindow : Window
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
                 bitmap.UriSource = new Uri(thumbnailPath);
                 bitmap.EndInit();
                 ThumbnailImage.Source = bitmap;
@@ -311,6 +328,20 @@ public partial class MainWindow : Window
                 ThumbnailPlaceholder.Visibility = Visibility.Visible;
             }
 
+            // Update Install Rule checkboxes based on current Info.json
+            var installRules = _selectedEntry.Info?.InstallRule;
+            LuaTypeCheckBox.IsChecked = installRules?.Any(r => string.Equals(r.Type, "Lua", StringComparison.OrdinalIgnoreCase)) == true;
+            PaksTypeCheckBox.IsChecked = installRules?.Any(r => string.Equals(r.Type, "Paks", StringComparison.OrdinalIgnoreCase)) == true;
+            LogicModsTypeCheckBox.IsChecked = installRules?.Any(r => string.Equals(r.Type, "LogicMods", StringComparison.OrdinalIgnoreCase)) == true;
+            PalSchemaTypeCheckBox.IsChecked = installRules?.Any(r => string.Equals(r.Type, "PalSchema", StringComparison.OrdinalIgnoreCase)) == true;
+
+            // Check if InstallRules have been manually modified (custom targets or unsupported types)
+            var isInstallRuleStandard = IsInstallRuleStandard(installRules);
+
+            // Update Dependencies display
+            _selectedDependencies = _selectedEntry.Info?.Dependencies;
+            UpdateDependenciesDisplay();
+
             // Enable editing only for non-subscribed mods
             var canEdit = !_selectedEntry.IsSubscribed;
             ModNameTextBox.IsEnabled = canEdit;
@@ -321,6 +352,15 @@ public partial class MainWindow : Window
             ThumbnailDropArea.IsEnabled = canEdit;
             ThumbnailDropArea.AllowDrop = canEdit;
             ThumbnailDropArea.Cursor = canEdit ? System.Windows.Input.Cursors.Hand : System.Windows.Input.Cursors.Arrow;
+            EditDependenciesButton.IsEnabled = canEdit;
+
+            // InstallRule checkboxes: only enable if editable AND InstallRules are standard
+            var canEditInstallRules = canEdit && isInstallRuleStandard;
+            LuaTypeCheckBox.IsEnabled = canEditInstallRules;
+            PaksTypeCheckBox.IsEnabled = canEditInstallRules;
+            LogicModsTypeCheckBox.IsEnabled = canEditInstallRules;
+            PalSchemaTypeCheckBox.IsEnabled = canEditInstallRules;
+            InstallRuleManualWarning.Visibility = (canEdit && !isInstallRuleStandard) ? Visibility.Visible : Visibility.Collapsed;
 
             UploadButton.IsEnabled = !_selectedEntry.IsSubscribed;
             OpenModDirectoryButton.IsEnabled = true;
@@ -355,6 +395,20 @@ public partial class MainWindow : Window
             ThumbnailDropArea.IsEnabled = false;
             ThumbnailDropArea.AllowDrop = false;
             ThumbnailDropArea.Cursor = System.Windows.Input.Cursors.Arrow;
+
+            LuaTypeCheckBox.IsChecked = false;
+            PaksTypeCheckBox.IsChecked = false;
+            LogicModsTypeCheckBox.IsChecked = false;
+            PalSchemaTypeCheckBox.IsChecked = false;
+            LuaTypeCheckBox.IsEnabled = false;
+            PaksTypeCheckBox.IsEnabled = false;
+            LogicModsTypeCheckBox.IsEnabled = false;
+            PalSchemaTypeCheckBox.IsEnabled = false;
+            InstallRuleManualWarning.Visibility = Visibility.Collapsed;
+
+            _selectedDependencies = null;
+            DependenciesTextBox.Text = string.Empty;
+            EditDependenciesButton.IsEnabled = false;
 
             UploadButton.IsEnabled = false;
             OpenModDirectoryButton.IsEnabled = false;
@@ -445,12 +499,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        var templatePath = Path.Combine("./Mod/Template");
-        if (!Directory.Exists(templatePath))
+        // Show install rule type selection dialog
+        var typeSelectionDialog = new InstallRuleTypeSelectionWindow { Owner = this };
+        if (typeSelectionDialog.ShowDialog() != true)
         {
-            MessageBox.Show("Template directory not found.", "Template Missing", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+
+        // Store selections for use in OnItemCreated callback
+        _newModLuaSelected = typeSelectionDialog.IsLuaSelected;
+        _newModPaksSelected = typeSelectionDialog.IsPaksSelected;
+        _newModLogicModsSelected = typeSelectionDialog.IsLogicModsSelected;
+        _newModPalSchemaSelected = typeSelectionDialog.IsPalSchemaSelected;
 
         // SHIFT-Click: bypass Steam and create folder with 10-digit random number
         if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
@@ -473,14 +533,7 @@ public partial class MainWindow : Window
                     targetDirectory = Path.Combine(_workshopContentDirectory, folderName);
                 }
 
-                CopyDirectory(templatePath, targetDirectory);
-
-                var paksDir = Path.Combine(targetDirectory, "Paks");
-                var logicModsDir = Path.Combine(targetDirectory, "LogicMods");
-                var palSchemaDir = Path.Combine(targetDirectory, "PalSchema");
-                Directory.CreateDirectory(paksDir);
-                Directory.CreateDirectory(logicModsDir);
-                Directory.CreateDirectory(palSchemaDir);
+                CreateNewModDirectory(targetDirectory);
 
                 // Reload list and select the newly created entry
                 LoadModsFromDirectory(_workshopContentDirectory);
@@ -744,13 +797,6 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var templatePath = Path.Combine("./Mod/Template");
-            if (!Directory.Exists(templatePath))
-            {
-                StatusTextBlock.Text = "Item created, but the template directory is missing.";
-                return;
-            }
-
             var publishedId = callback.m_nPublishedFileId.ToString();
             var targetDirectory = Path.Combine(_workshopContentDirectory, publishedId);
 
@@ -762,18 +808,11 @@ public partial class MainWindow : Window
 
             try
             {
-                CopyDirectory(templatePath, targetDirectory);
-
-                var paksDir = Path.Combine(targetDirectory, "Paks");
-                var logicModsDir = Path.Combine(targetDirectory, "LogicMods");
-                var palSchemaDir = Path.Combine(targetDirectory, "PalSchema");
-                Directory.CreateDirectory(paksDir);
-                Directory.CreateDirectory(logicModsDir);
-                Directory.CreateDirectory(palSchemaDir);
+                CreateNewModDirectory(targetDirectory);
             }
             catch (Exception ex)
             {
-                StatusTextBlock.Text = $"Failed to copy template: {ex.Message}";
+                StatusTextBlock.Text = $"Failed to create mod directory: {ex.Message}";
                 return;
             }
 
@@ -968,27 +1007,79 @@ public partial class MainWindow : Window
         return value.ToString();
     }
 
-    private static void CopyDirectory(string sourceDir, string destinationDir)
+    private void CreateNewModDirectory(string targetDirectory)
     {
-        var sourceInfo = new DirectoryInfo(sourceDir);
-        if (!sourceInfo.Exists)
+        // Create target directory
+        Directory.CreateDirectory(targetDirectory);
+
+        // Copy thumbnail.png from exe directory if it exists
+        var exeDir = AppDomain.CurrentDomain.BaseDirectory;
+        var sourceThumbnail = Path.Combine(exeDir, "thumbnail.png");
+        if (File.Exists(sourceThumbnail))
         {
-            throw new DirectoryNotFoundException($"Source directory '{sourceDir}' does not exist.");
+            File.Copy(sourceThumbnail, Path.Combine(targetDirectory, "thumbnail.png"));
         }
 
-        Directory.CreateDirectory(destinationDir);
-
-        foreach (var file in sourceInfo.GetFiles())
+        // Create directories and main.lua based on selected types
+        if (_newModLuaSelected)
         {
-            var targetFilePath = Path.Combine(destinationDir, file.Name);
-            file.CopyTo(targetFilePath);
+            var scriptsDir = Path.Combine(targetDirectory, "Scripts");
+            Directory.CreateDirectory(scriptsDir);
+            File.WriteAllText(Path.Combine(scriptsDir, "main.lua"), "-- example main script\n");
         }
 
-        foreach (var subDirectory in sourceInfo.GetDirectories())
+        if (_newModPaksSelected)
         {
-            var targetSubDir = Path.Combine(destinationDir, subDirectory.Name);
-            CopyDirectory(subDirectory.FullName, targetSubDir);
+            Directory.CreateDirectory(Path.Combine(targetDirectory, "Paks"));
         }
+
+        if (_newModLogicModsSelected)
+        {
+            Directory.CreateDirectory(Path.Combine(targetDirectory, "LogicMods"));
+        }
+
+        if (_newModPalSchemaSelected)
+        {
+            Directory.CreateDirectory(Path.Combine(targetDirectory, "PalSchema"));
+        }
+
+        // Create Info.json with selected InstallRules
+        var installRules = new List<InstallRule>();
+
+        if (_newModLuaSelected)
+        {
+            installRules.Add(new InstallRule { Type = "Lua", Targets = new[] { "./Scripts" } });
+        }
+
+        if (_newModPaksSelected)
+        {
+            installRules.Add(new InstallRule { Type = "Paks", Targets = new[] { "./Paks/" } });
+        }
+
+        if (_newModLogicModsSelected)
+        {
+            installRules.Add(new InstallRule { Type = "LogicMods", Targets = new[] { "./LogicMods/" } });
+        }
+
+        if (_newModPalSchemaSelected)
+        {
+            installRules.Add(new InstallRule { Type = "PalSchema", Targets = new[] { "./PalSchema/" } });
+        }
+
+        var info = new ModInfo
+        {
+            ModName = "MyAwesomeMod",
+            PackageName = "MyAwesomeMod",
+            Author = "yourname",
+            Thumbnail = "thumbnail.png",
+            Version = "1.0.0",
+            MinRevision = 82182,
+            Dependencies = Array.Empty<string>(),
+            InstallRule = installRules.ToArray()
+        };
+
+        var json = JsonSerializer.Serialize(info, _jsonOptions);
+        File.WriteAllText(Path.Combine(targetDirectory, "Info.json"), json);
     }
 
     #region Thumbnail D&D and Selection
@@ -1106,10 +1197,11 @@ public partial class MainWindow : Window
                 _selectedEntry.Info.Thumbnail = thumbnailFileName;
             }
 
-            // Reload the image
+            // Reload the image (IgnoreImageCache ensures fresh load when file changes)
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
             bitmap.UriSource = new Uri(targetPath);
             bitmap.EndInit();
             ThumbnailImage.Source = bitmap;
@@ -1131,11 +1223,61 @@ public partial class MainWindow : Window
         return extension is ".png" or ".jpg" or ".jpeg" or ".gif";
     }
 
+    /// <summary>
+    /// Checks if the given InstallRule array contains only standard entries that can be managed by UI checkboxes.
+    /// Returns false if there are unknown types (e.g., UE4SS) or custom targets.
+    /// </summary>
+    private static bool IsInstallRuleStandard(InstallRule[]? installRules)
+    {
+        if (installRules == null || installRules.Length == 0)
+        {
+            return true; // Empty is considered standard
+        }
+
+        foreach (var rule in installRules)
+        {
+            // Check if the type is one of our supported checkbox types
+            if (!ExpectedInstallRuleTargets.TryGetValue(rule.Type ?? string.Empty, out var expectedTargets))
+            {
+                // Unknown type (e.g., UE4SS) - not standard
+                return false;
+            }
+
+            // Check if targets match expected defaults
+            var targets = rule.Targets ?? Array.Empty<string>();
+            if (targets.Length != expectedTargets.Length)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < targets.Length; i++)
+            {
+                if (!string.Equals(targets[i], expectedTargets[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     #endregion
 
     #region Mod Info Editing
 
     private void ModInfoField_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isUpdatingModDetails || _selectedEntry == null)
+        {
+            return;
+        }
+
+        _hasUnsavedChanges = true;
+        SaveModInfoButton.IsEnabled = true;
+    }
+
+    private void InstallRuleCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingModDetails || _selectedEntry == null)
         {
@@ -1202,6 +1344,37 @@ public partial class MainWindow : Window
                 info.Thumbnail = _selectedEntry.Info.Thumbnail;
             }
 
+            // Update Dependencies
+            info.Dependencies = _selectedDependencies is { Length: > 0 } ? _selectedDependencies : null;
+
+            // Update InstallRule based on checkboxes
+            var installRules = new List<InstallRule>();
+
+            if (LuaTypeCheckBox.IsChecked == true)
+            {
+                installRules.Add(new InstallRule { Type = "Lua", Targets = new[] { "./Scripts" } });
+            }
+
+            if (PaksTypeCheckBox.IsChecked == true)
+            {
+                installRules.Add(new InstallRule { Type = "Paks", Targets = new[] { "./Paks/" } });
+                Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "Paks"));
+            }
+
+            if (LogicModsTypeCheckBox.IsChecked == true)
+            {
+                installRules.Add(new InstallRule { Type = "LogicMods", Targets = new[] { "./LogicMods/" } });
+                Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "LogicMods"));
+            }
+
+            if (PalSchemaTypeCheckBox.IsChecked == true)
+            {
+                installRules.Add(new InstallRule { Type = "PalSchema", Targets = new[] { "./PalSchema/" } });
+                Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "PalSchema"));
+            }
+
+            info.InstallRule = installRules.ToArray();
+
             // Serialize and save
             var json = JsonSerializer.Serialize(info, _jsonOptions);
             File.WriteAllText(infoPath, json);
@@ -1217,6 +1390,57 @@ public partial class MainWindow : Window
         {
             MessageBox.Show($"Failed to save Info.json: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    #endregion
+
+    #region Dependencies
+
+    private void UpdateDependenciesDisplay()
+    {
+        if (_selectedDependencies is { Length: > 0 })
+        {
+            DependenciesTextBox.Text = string.Join(", ", _selectedDependencies);
+        }
+        else
+        {
+            DependenciesTextBox.Text = string.Empty;
+        }
+    }
+
+    private void EditDependenciesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        {
+            return;
+        }
+
+        // Get all mods with PackageNames (excluding the currently selected mod)
+        var availableMods = _modEntries
+            .Where(m => !string.IsNullOrWhiteSpace(m.PackageName) && m != _selectedEntry)
+            .Select(m => (ModName: m.ModName ?? m.PackageName ?? m.DirectoryName, PackageName: m.PackageName!))
+            .OrderBy(m => m.ModName)
+            .ToList();
+
+        if (availableMods.Count == 0)
+        {
+            MessageBox.Show("No mods with PackageName found.", "No Dependencies Available", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new DependenciesSelectionWindow { Owner = this };
+        dialog.SetAvailableMods(availableMods, _selectedDependencies);
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        _selectedDependencies = dialog.SelectedPackageNames;
+        UpdateDependenciesDisplay();
+
+        _hasUnsavedChanges = true;
+        SaveModInfoButton.IsEnabled = true;
     }
 
     #endregion

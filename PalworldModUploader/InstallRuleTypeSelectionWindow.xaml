@@ -1,0 +1,56 @@
+<Window x:Class="PalworldModUploader.InstallRuleTypeSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Select Mod Types"
+        Height="280"
+        Width="400"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Select the mod types:"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,12" />
+
+        <StackPanel Grid.Row="1" Margin="8,0,0,0">
+            <CheckBox x:Name="LuaCheckBox"
+                      Content="Lua (Scripts)"
+                      IsChecked="True"
+                      Margin="0,8,0,0"
+                      FontSize="14" />
+            <CheckBox x:Name="PaksCheckBox"
+                      Content="Paks"
+                      IsChecked="True"
+                      Margin="0,8,0,0"
+                      FontSize="14" />
+            <CheckBox x:Name="LogicModsCheckBox"
+                      Content="LogicMods"
+                      IsChecked="True"
+                      Margin="0,8,0,0"
+                      FontSize="14" />
+            <CheckBox x:Name="PalSchemaCheckBox"
+                      Content="PalSchema"
+                      IsChecked="True"
+                      Margin="0,8,0,0"
+                      FontSize="14" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="2"
+                   Text="You can manually edit Info.json for more fine-grained control."
+                   FontSize="11"
+                   Foreground="#666666"
+                   Margin="0,16,0,12"
+                   TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Width="90" Height="28" Margin="0,0,8,0" IsDefault="True" Click="OkButton_Click">OK</Button>
+            <Button Width="90" Height="28" IsCancel="True">Cancel</Button>
+        </StackPanel>
+    </Grid>
+</Window>
