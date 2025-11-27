@@ -1,22 +1,23 @@
-# Palworld Mod Uploiader for Experimental Testing
+# Palworld Mod Uploader for Experimental Testing
 
-This guide contains the information needed to test the official mod loader and Steam Workshop integration scheduled to be introduced in the December update.
+This guide provides the information required to test the official mod loader and Steam Workshop integration scheduled to be introduced in the December update.
 
 ## The First Step
 
-As we move toward officially supporting mods, our top priority is to respect the existing modding community.
-Rather than creating a brand-new, mod-exclusive API or system, we’ve built things so that current mods can be published to Steam Workshop with as few changes as possible.
+As we move toward officially supporting mods, we prioritize respecting the existing modding community.
+Instead of creating new, dedicated mod APIs or mechanisms, we built a system that allows creators to easily publish their existing mods to the Steam Workshop with minimal changes.
 
-For now, the following four types are supported:
+Currently, the following four types are supported:
 
 * Paks (Resource replacement)
 * Lua (UE4SS)
 * LogicMods (UE4SS)
-* UE4SS itself
+* UE4SS core
+* PalSchema-dependent Mods
 
-## Packaging Mods
+## Packaging Your Mod
 
-To have existing or newly created mods recognized by the Palworld game client and to publish them to Steam Workshop, they must be packaged in a specified format.
+To make existing or newly created mods loadable by the Palworld game client—and to publish them to the Steam Workshop—they must be packaged in the required format.
 
 ### Preparation
 
@@ -24,66 +25,63 @@ You need to have Steam running.
 
 ### Join the Steam Group
 
-To enable Workshop features, send a join request to the Steam group below and then contact the Pocketpair representative.
-
+To enable Workshop features, send a request to join the Steam group and contact a Pocketpair representative.
 [https://steamcommunity.com/groups/palexp](https://steamcommunity.com/groups/palexp)
 
-### Launch `PalworldModUploader.exe`
+### Launch PalworldModUploader.exe
 
-You may see a warning like: “You are not subscribed to anything, so the workshop directory cannot be found.”
+You may see a warning such as “No subscriptions found, so the Workshop directory is not visible.”
 
-In that case, either subscribe to any mod in advance, or from the `...` button at the top of the window, open:
-
+Subscribe to *any* mod beforehand or manually specify the directory via the `...` at the top of the window and point it to:
 `C:\Program Files (x86)\Steam\steamapps\workshop\content\1623730`
 
-If `1623730` does not exist, create it.
-If you changed your Steam install location, you may need to adjust this path.
+If `1623730` does not exist, please create it.
+If your Steam installation is in a different location, adjust the path accordingly.
 
-### Click `Create New Mod`
+### Press `Create New Mod`
 
-An ID will be registered on the Palworld Steam Workshop, and you will be able to create a new mod entry.
-New mods are private by default.
+A new Steam Workshop ID for Palworld will be registered, allowing you to create a new mod. It will be private by default.
 
-### Put Your Mod Files In
+### Select the Type of Mod You Want to Create
 
-After `Create New Mod` succeeds, a folder will open.
-Place your files into this folder according to the type of mod you’re installing.
+All mods except UE4SS core can be configured from the display.
+
+### Insert Your Mod Files
+
+Once `Create New Mod` succeeds, a folder will open. Place your mod files according to the type of mod you’re creating.
 
 **Pak files: `Paks/`**
-This is a common mod type for visual changes or database edits.
-Modding is achieved by directly overwriting Unreal Engine resources.
+Common for appearance changes or database edits. These mods overwrite Unreal Engine resources directly.
 
 **Lua scripts: `Scripts/`**
-This is a common mod type for changing limits or rules.
-Modding is done by interfering with Unreal Engine’s C++ code.
-In most cases, these depend on UE4SS.
+Common for adjusting constraints. They modify Unreal Engine C++ behavior, usually via UE4SS.
 
 **LogicMods: `LogicMods/`**
-These are often used to add new elements or heavily rewrite in-game logic.
-In most cases, they depend on UE4SS.
-Mods created before the December update are very likely not to work correctly.
+Used for adding new features or major logic changes within the game.
+Most LogicMods depend on UE4SS. Mods created before the December update may not work properly.
 
 **PalSchema: `PalSchema/`**
-Used by Mods that depend on PalSchema. Typically used by UE4SS and PalSchema itself.
+Used by mods that depend on PalSchema. Typically used together with UE4SS and the PalSchema core.
 
----
+### Edit Info.json
 
-### Edit `Info.json`
+Basic settings can be edited through the Palworld Mod Uploader.
 
-Change `ModName`, `PackageName`, and `Auther`, and in `InstallRule`, fill in blocks for the types of mods you have placed.
+#### Editing Manually
 
-*Notes*
+Modify `ModName`, `PackageName`, and `Auther`, and specify the blocks under `InstallRule` according to the types of files you placed.
 
-* If multiple mods share the same `PackageName`, they will not work correctly.
-* If you change a mod after it has already been enabled by the Palworld game client, you must increase the `Version`.
+*Important notes*
 
-#### Example Settings
+* If multiple mods share the same `PackageName`, they will not function correctly.
+* If you change a mod after it has already been activated by the Palworld game client, you must increase the `Version`.
 
-Below is an example `InstallRule` when you have mods in Pak, Lua, and LogicMods.
-You can remove any directories you don’t use.
-You generally don’t need to change `Targets`.
+#### Example Configuration
 
-```json
+Below is an example `InstallRule` for a mod containing Pak, Lua, and LogicMods.
+You may remove unused directories. Targets generally do not need editing.
+
+```
 {
   "ModName": "MyAwesomeMod",
   "PackageName": "MyAwesomeMod",
@@ -115,36 +113,64 @@ You generally don’t need to change `Targets`.
 }
 ```
 
-After editing, if your mod appears in the Mod Uploader’s `Mod Name` and `Auther` fields, you’re done.
+After editing, if your mod appears in the Mod Uploader under `Mod Name` and `Auther`, the setup is complete.
 
----
+### Enabling the Mod In-Game
 
-### Enabling Mods In-Game
+After launching the game, go to Options → Mod Management.
+Turn on **Allow Mod Usage**, enable your mod, then restart the game.
 
-After launching the game, open Options and go to Mod Management.
-Turn **Allow Mod Use** ON and enable the mod you created.
-Save, then restart the game.
+If your mod does not appear in the list, check the following:
 
-If the mod doesn’t appear on this screen, check the following:
+* The Workshop directory specified when launching Palworld Mod Uploader is incorrect
+* `Info.json` is not valid JSON (e.g., trailing commas)
 
-* The Workshop directory specified when launching Palworld Mod Uploader is correct.
-* `Info.json` is valid JSON (no extra commas, etc.).
+### Testing the Mod In-Game
 
----
+After restarting, the mod will be active.
+Try creating a new world and verify that the mod is functioning.
 
-### Checking Behavior In-Game
+Appearance-changing mods are often linked to specific player types in the character creation screen.
 
-After restarting, mods will be enabled.
+### Publishing
 
-Create a new world or similar to verify that the mod is working.
-For visual-change mods, content is often linked to specific player Types in the character creation screen.
+Selecting your mod and clicking **Upload To Steam** will publish your packaged mod to the Workshop.
 
----
+It will upload as **private** by default; after adjusting settings on the Steam Workshop page, you may publish it.
 
-### About Publishing
+You are welcome to publish your mod, but note:
 
-With a mod selected, choose **Upload To Steam** to publish your packaged mod to the Workshop.
-It will be uploaded as **private** by default; you can then adjust the settings on the Steam Workshop page and make it public.
+* Once uploaded, **everyone in the “Palworld Experimental” group** will be able to subscribe to it.
+* Some Workshop items may be removed before the December update is officially released.
 
-You are free to publish mods, but please note that once you upload, all members of the `Palworld Experimental` group will be able to subscribe to them.
-Also, some Workshop items may be deleted before the December update is officially released.
+## Technical Specifications
+
+This section explains the technical specifications.
+
+### Install Type
+
+Install Type determines the directory where each component will be installed.
+They correspond as follows:
+
+**UE4SS**     → `Mods\NativeMods\UE4SS`
+**Lua**       → `Mods\NativeMods\UE4SS\Mods\{PackageName}`
+**PalSchema** → `Mods\NativeMods\UE4SS\Mods\PalSchema\mods`
+**LogicMods** → `Pal\Content\Paks\LogicMods`
+**Paks**      → `Pal\Content\Paks\~WorkshopMods`
+
+### Package Name
+
+The official Palworld mod loader identifies mods based on the Package Name.
+As long as **multiple mods with the same Package Name are not enabled simultaneously**, uniqueness is not required.
+
+#### Using the Same Package Name for Different Mods
+
+It is possible to intentionally use the same Package Name across different mods.
+For example, if you want to use a custom-configured UE4SS as a dependency instead of the default, you can set the Package Name to match the official UE4SS and use your custom version as the required dependency.
+
+#### Mods with Restrictions
+
+**PalSchema Core**
+The PalSchema core *must* have the `PackageName` set to **`PalSchema`**.
+This is because mods depending on PalSchema are always placed in:
+`Mods\NativeMods\UE4SS\Mods\PalSchema\mods`

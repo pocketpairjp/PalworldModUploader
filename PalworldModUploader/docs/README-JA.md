@@ -32,6 +32,9 @@ https://steamcommunity.com/groups/palexp
 
 PalworldのSteamワークショップにIDが登録され、Modの作成が行えるようになります。デフォルトで非公開です。
 
+### 作りたいModの種別を選択する
+UE4SS本体以外のModについてはディスプレイから設定することができます。
+
 ### Modを詰め込む
 Create New Modが成功するとフォルダが開きます。導入したいModの形式に沿ってファイルを設置してください。
 
@@ -51,6 +54,9 @@ PalSchemaに依存するModで利用されます。たいていの場合、UE4SS
 
 
 ### Info.jsonを編集する
+基本的な内容はPalworld Mod Uploaderから編集することができます。
+
+#### 手動で編集する
 `ModName`, `PackageName`, `Auther` を変更し、 `InstallRule` に詰めたModの種別のブロックを記入します。
 
 *注意点*
@@ -112,3 +118,32 @@ Modを選択した状態でUpload To Steamを行うと自身のパッケージ�
 
 Modを公開していただいても問題はありませんが、公開操作を行った場合は `Palworld Experimental` グループ全員がサブスクライブできる状態になりますのでご注意ください。
 また、12月アップデートリリース前にいくつかのWorkshopアイテムは削除される可能性があります。
+
+## 技術仕様
+
+技術仕様について解説します。
+
+### Install Type
+
+Install Typeはインストール先のディレクトリを決定するキーになります。それぞれ、下記の通りに対応しています。
+
+**UE4SS**     -> `Mods\NativeMods\UE4SS`
+**Lua**       -> `Mods\NativeMods\UE4SS\Mods\{PackageName}`
+**PalSchema** -> `Mods\NativeMods\UE4SS\Mods\PalSchema\mods`
+**LogicMods** -> `Pal\Content\Paks\LogicMods`
+**Paks**      -> `Pal\Content\Paks\~WorkshopMods`
+
+### Package Name
+
+パルワールド公式Modローダーでは、Package Nameを元にModを識別しています。 **同時に有効化されることがない限り** ここの名前は一意である必要はありません。
+
+#### 違うModで同じPackage Nameを採用する
+
+違うModで同じPackage Nameを採用することも可能です。例えば、既存のUE4SSとは異なる設定のUE4SSを前提Modとしたい場合、Package Nameを同じにすることで別のUE4SSを前提Modとして利用することが可能になります。
+
+
+#### 制約のあるMod
+
+**PalSchema本体**
+PalSchema本体は、かならずPackageNameが `PalSchema` でなければいけません。
+これは、PalSchemaに依存するModが必ず `Mods\NativeMods\UE4SS\Mods\PalSchema\mods` に配置されるためです。
