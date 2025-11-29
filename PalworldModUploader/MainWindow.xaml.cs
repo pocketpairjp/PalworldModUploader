@@ -1087,7 +1087,7 @@ public partial class MainWindow : Window
         {
             ModName = "MyAwesomeMod",
             PackageName = "MyAwesomeMod",
-            Author = "yourname",
+            Author = SteamFriends.GetPersonaName(),
             Thumbnail = "thumbnail.png",
             Version = "1.0.0",
             MinRevision = 82182,
