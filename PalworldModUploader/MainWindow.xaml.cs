@@ -58,11 +58,12 @@ public partial class MainWindow : Window
     private WorkshopModPack? _currentPack;
     private bool _isCreatingWorkshopItem;
 
-    private bool _reloadOnActivatedPending;
-    private bool _isReloadingOnActivate;
     private bool _isUpdatingModDetails;
     private bool _hasUnsavedChanges;
+    private string? _pendingThumbnailSourcePath;
+    private string? _pendingThumbnailFileName;
     private string[]? _selectedDependencies;
+    private bool _suppressSelectionChange;
 
     // Install rule type selections for new mod creation
     private bool _newModLuaSelected;
@@ -87,9 +88,6 @@ public partial class MainWindow : Window
         _progressTimer.Tick += (_, _) => UpdateProgress();
 
         Loaded += OnLoaded;
-
-        Activated += OnWindowActivated;
-        Deactivated += (_, _) => _reloadOnActivatedPending = true;
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -108,43 +106,6 @@ public partial class MainWindow : Window
         {
             WorkshopDirTextBox.Text = _workshopContentDirectory;
             LoadModsFromDirectory(_workshopContentDirectory);
-        }
-    }
-
-    private void OnWindowActivated(object? sender, EventArgs e)
-    {
-        if (!_reloadOnActivatedPending || _isReloadingOnActivate)
-        {
-            return;
-        }
-
-        _isReloadingOnActivate = true;
-        try
-        {
-            var selectedFullPath = (_selectedEntry ?? ModsDataGrid.SelectedItem as ModDirectoryEntry)?.FullPath;
-
-            DiscoverWorkshopContentDirectory();
-            var currentDirectory = WorkshopDirTextBox.Text;
-            if (!string.IsNullOrWhiteSpace(currentDirectory))
-            {
-                _workshopContentDirectory = currentDirectory;
-                LoadModsFromDirectory(_workshopContentDirectory);
-            }
-
-            if (!string.IsNullOrWhiteSpace(selectedFullPath))
-            {
-                var toSelect = _modEntries.FirstOrDefault(m => string.Equals(m.FullPath, selectedFullPath, StringComparison.OrdinalIgnoreCase));
-                if (toSelect != null)
-                {
-                    ModsDataGrid.SelectedItem = toSelect;
-                    ModsDataGrid.ScrollIntoView(toSelect);
-                }
-            }
-        }
-        finally
-        {
-            _reloadOnActivatedPending = false;
-            _isReloadingOnActivate = false;
         }
     }
 
@@ -283,7 +244,44 @@ public partial class MainWindow : Window
 
     private void ModsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _selectedEntry = ModsDataGrid.SelectedItem as ModDirectoryEntry;
+        if (_suppressSelectionChange)
+        {
+            return;
+        }
+
+        var newSelection = ModsDataGrid.SelectedItem as ModDirectoryEntry;
+        var previousSelection = _selectedEntry;
+        var previousIndex = previousSelection != null ? _modEntries.IndexOf(previousSelection) : -1;
+
+        if (_hasUnsavedChanges && !ReferenceEquals(newSelection, _selectedEntry))
+        {
+            if (!ConfirmDiscardUnsavedChanges())
+            {
+                _suppressSelectionChange = true;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        if (previousSelection != null && previousIndex >= 0)
+                        {
+                            ModsDataGrid.SelectedIndex = previousIndex;
+                        }
+                        else
+                        {
+                            ModsDataGrid.UnselectAll();
+                        }
+                    }
+                    finally
+                    {
+                        _suppressSelectionChange = false;
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Render);
+
+                return;
+            }
+        }
+
+        _selectedEntry = newSelection;
         UpdateModDetails();
     }
 
@@ -292,6 +290,8 @@ public partial class MainWindow : Window
         _isUpdatingModDetails = true;
         try
         {
+            ClearPendingThumbnail();
+
             if (_selectedEntry == null)
             {
                 ClearModDetails();
@@ -313,14 +313,7 @@ public partial class MainWindow : Window
             var thumbnailPath = _selectedEntry.GetThumbnailFullPath();
             if (!string.IsNullOrWhiteSpace(thumbnailPath) && File.Exists(thumbnailPath))
             {
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                bitmap.UriSource = new Uri(thumbnailPath);
-                bitmap.EndInit();
-                ThumbnailImage.Source = bitmap;
-                ThumbnailPlaceholder.Visibility = Visibility.Collapsed;
+                DisplayThumbnail(thumbnailPath);
             }
             else
             {
@@ -379,6 +372,8 @@ public partial class MainWindow : Window
         _isUpdatingModDetails = true;
         try
         {
+            ClearPendingThumbnail();
+
             ModNameTextBox.Text = string.Empty;
             PackageNameTextBox.Text = string.Empty;
             VersionTextBox.Text = string.Empty;
@@ -424,6 +419,11 @@ public partial class MainWindow : Window
 
     private void SelectWorkshopDirectoryButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!ConfirmDiscardUnsavedChanges())
+        {
+            return;
+        }
+
         var dialog = new System.Windows.Forms.FolderBrowserDialog
         {
             SelectedPath = _workshopContentDirectory ?? string.Empty,
@@ -443,12 +443,29 @@ public partial class MainWindow : Window
 
     private void ReloadButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!ConfirmDiscardUnsavedChanges())
+        {
+            return;
+        }
+
+        var selectedFullPath = (_selectedEntry ?? ModsDataGrid.SelectedItem as ModDirectoryEntry)?.FullPath;
+
         DiscoverWorkshopContentDirectory();
         var currentDirectory = WorkshopDirTextBox.Text;
         if (!string.IsNullOrWhiteSpace(currentDirectory))
         {
             _workshopContentDirectory = currentDirectory;
             LoadModsFromDirectory(_workshopContentDirectory);
+
+            if (!string.IsNullOrWhiteSpace(selectedFullPath))
+            {
+                var toSelect = _modEntries.FirstOrDefault(m => string.Equals(m.FullPath, selectedFullPath, StringComparison.OrdinalIgnoreCase));
+                if (toSelect != null)
+                {
+                    ModsDataGrid.SelectedItem = toSelect;
+                    ModsDataGrid.ScrollIntoView(toSelect);
+                }
+            }
         }
     }
 
@@ -1084,6 +1101,24 @@ public partial class MainWindow : Window
 
     #region Thumbnail D&D and Selection
 
+    private void DisplayThumbnail(string imagePath)
+    {
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+        bitmap.UriSource = new Uri(imagePath);
+        bitmap.EndInit();
+        ThumbnailImage.Source = bitmap;
+        ThumbnailPlaceholder.Visibility = Visibility.Collapsed;
+    }
+
+    private void ClearPendingThumbnail()
+    {
+        _pendingThumbnailSourcePath = null;
+        _pendingThumbnailFileName = null;
+    }
+
     private void ThumbnailDropArea_DragOver(object sender, System.Windows.DragEventArgs e)
     {
         if (_selectedEntry == null || _selectedEntry.IsSubscribed)
@@ -1184,32 +1219,29 @@ public partial class MainWindow : Window
 
         try
         {
-            var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
-            var thumbnailFileName = $"thumbnail{extension}";
-            var targetPath = Path.Combine(_selectedEntry.FullPath, thumbnailFileName);
-
-            // Copy the image to the mod directory
-            File.Copy(sourcePath, targetPath, true);
-
-            // Update Info.json thumbnail field
-            if (_selectedEntry.Info != null)
+            if (!File.Exists(sourcePath))
             {
-                _selectedEntry.Info.Thumbnail = thumbnailFileName;
+                StatusTextBlock.Text = "Selected thumbnail file was not found.";
+                return;
             }
 
-            // Reload the image (IgnoreImageCache ensures fresh load when file changes)
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-            bitmap.UriSource = new Uri(targetPath);
-            bitmap.EndInit();
-            ThumbnailImage.Source = bitmap;
-            ThumbnailPlaceholder.Visibility = Visibility.Collapsed;
+            var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                StatusTextBlock.Text = "Selected thumbnail file has no extension.";
+                return;
+            }
+
+            var thumbnailFileName = $"thumbnail{extension}";
+
+            _pendingThumbnailSourcePath = sourcePath;
+            _pendingThumbnailFileName = thumbnailFileName;
+
+            DisplayThumbnail(sourcePath);
 
             _hasUnsavedChanges = true;
             SaveModInfoButton.IsEnabled = true;
-            StatusTextBlock.Text = $"Thumbnail set: {thumbnailFileName}";
+            StatusTextBlock.Text = $"Thumbnail ready: {thumbnailFileName} (save to apply)";
         }
         catch (Exception ex)
         {
@@ -1288,6 +1320,22 @@ public partial class MainWindow : Window
         SaveModInfoButton.IsEnabled = true;
     }
 
+    private bool ConfirmDiscardUnsavedChanges()
+    {
+        if (!_hasUnsavedChanges)
+        {
+            return true;
+        }
+
+        var result = MessageBox.Show(
+            "You have unsaved changes. Discard them?",
+            "Unsaved changes",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+
+        return result == MessageBoxResult.OK;
+    }
+
     private void SaveModInfoButton_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedEntry == null)
@@ -1338,10 +1386,17 @@ public partial class MainWindow : Window
             info.MinRevision = minRevision;
             info.Author = AuthorTextBox.Text.Trim();
 
-            // Preserve thumbnail from current state if changed
-            if (_selectedEntry.Info?.Thumbnail != null)
+            // Handle thumbnail changes (only commit to disk when saving)
+            if (_pendingThumbnailSourcePath is { } pendingThumbnail && _pendingThumbnailFileName is { Length: > 0 } pendingFileName)
             {
-                info.Thumbnail = _selectedEntry.Info.Thumbnail;
+                var targetPath = Path.Combine(_selectedEntry.FullPath, pendingFileName);
+                File.Copy(pendingThumbnail, targetPath, true);
+                info.Thumbnail = pendingFileName;
+                DisplayThumbnail(targetPath);
+            }
+            else if (_selectedEntry.Info?.Thumbnail is { Length: > 0 } existingThumbnail)
+            {
+                info.Thumbnail = existingThumbnail;
             }
 
             // Update Dependencies
@@ -1381,6 +1436,8 @@ public partial class MainWindow : Window
 
             // Update in-memory entry
             _selectedEntry.Info = info;
+
+            ClearPendingThumbnail();
 
             _hasUnsavedChanges = false;
             SaveModInfoButton.IsEnabled = false;
