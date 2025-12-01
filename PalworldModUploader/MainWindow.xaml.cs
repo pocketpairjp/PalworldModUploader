@@ -1403,32 +1403,40 @@ public partial class MainWindow : Window
             info.Dependencies = _selectedDependencies is { Length: > 0 } ? _selectedDependencies : null;
 
             // Update InstallRule based on checkboxes
-            var installRules = new List<InstallRule>();
-
-            if (LuaTypeCheckBox.IsChecked == true)
+            if (IsInstallRuleStandard(_selectedEntry.Info?.InstallRule))
             {
-                installRules.Add(new InstallRule { Type = "Lua", Targets = new[] { "./Scripts" } });
-            }
+                var installRules = new List<InstallRule>();
 
-            if (PaksTypeCheckBox.IsChecked == true)
+                if (LuaTypeCheckBox.IsChecked == true)
+                {
+                    installRules.Add(new InstallRule { Type = "Lua", Targets = new[] { "./Scripts" } });
+                }
+
+                if (PaksTypeCheckBox.IsChecked == true)
+                {
+                    installRules.Add(new InstallRule { Type = "Paks", Targets = new[] { "./Paks/" } });
+                    Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "Paks"));
+                }
+
+                if (LogicModsTypeCheckBox.IsChecked == true)
+                {
+                    installRules.Add(new InstallRule { Type = "LogicMods", Targets = new[] { "./LogicMods/" } });
+                    Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "LogicMods"));
+                }
+
+                if (PalSchemaTypeCheckBox.IsChecked == true)
+                {
+                    installRules.Add(new InstallRule { Type = "PalSchema", Targets = new[] { "./PalSchema/" } });
+                    Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "PalSchema"));
+                }
+
+                info.InstallRule = installRules.ToArray();
+            }
+            else
             {
-                installRules.Add(new InstallRule { Type = "Paks", Targets = new[] { "./Paks/" } });
-                Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "Paks"));
+                // Preserve existing manually modified InstallRules
+                info.InstallRule = _selectedEntry.Info?.InstallRule;
             }
-
-            if (LogicModsTypeCheckBox.IsChecked == true)
-            {
-                installRules.Add(new InstallRule { Type = "LogicMods", Targets = new[] { "./LogicMods/" } });
-                Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "LogicMods"));
-            }
-
-            if (PalSchemaTypeCheckBox.IsChecked == true)
-            {
-                installRules.Add(new InstallRule { Type = "PalSchema", Targets = new[] { "./PalSchema/" } });
-                Directory.CreateDirectory(Path.Combine(_selectedEntry.FullPath, "PalSchema"));
-            }
-
-            info.InstallRule = installRules.ToArray();
 
             // Serialize and save
             var json = JsonSerializer.Serialize(info, _jsonOptions);
