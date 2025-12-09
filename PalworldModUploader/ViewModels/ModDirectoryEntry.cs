@@ -11,7 +11,9 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
 
     private ModInfo? _info;
     private WorkshopMetadata? _metadata;
+    private bool _isSubscribed;
     private string? _infoLoadError;
+    private ulong? _subscribedPublishedFileId;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -60,6 +62,37 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
         }
     }
 
+    public ulong? SubscribedPublishedFileId
+    {
+        get => _subscribedPublishedFileId;
+        set
+        {
+            if (_subscribedPublishedFileId == value)
+            {
+                return;
+            }
+
+            _subscribedPublishedFileId = value;
+            OnPropertyChanged(nameof(SubscribedPublishedFileId));
+            OnPropertyChanged(nameof(PublishedFileId));
+        }
+    }
+
+    public bool IsSubscribed
+    {
+        get => _isSubscribed;
+        set
+        {
+            if (_isSubscribed == value)
+            {
+                return;
+            }
+
+            _isSubscribed = value;
+            OnPropertyChanged(nameof(IsSubscribed));
+        }
+    }
+
     public string? InfoLoadError
     {
         get => _infoLoadError;
@@ -87,6 +120,11 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
     {
         get
         {
+            if (SubscribedPublishedFileId.HasValue)
+            {
+                return SubscribedPublishedFileId.Value.ToString();
+            }
+
             if (Metadata?.PublishedFileId is { Length: > 0 } metadataId)
             {
                 return metadataId;

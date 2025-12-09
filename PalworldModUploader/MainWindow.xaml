@@ -170,6 +170,9 @@
                     <DataGridTextColumn Header="Author"
                                         Binding="{Binding Author}"
                                         Width="2*" />
+                    <DataGridCheckBoxColumn Header="Subscribed"
+                                            Binding="{Binding IsSubscribed}"
+                                            Width="*" />
                 </DataGrid.Columns>
             </DataGrid>
 
