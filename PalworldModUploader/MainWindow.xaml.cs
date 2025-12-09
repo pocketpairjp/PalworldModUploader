@@ -26,6 +26,7 @@ namespace PalworldModUploader;
 public partial class MainWindow : Window
 {
     private const uint PalworldAppId = 1623730;
+    private const string WorkshopPathFileName = "workshop_path.txt";
     private static readonly string[] ValidInstallRuleTypes = { "Lua", "Paks", "LogicMods", "UE4SS", "PalSchema" };
 
     // Expected default targets for each supported InstallRule type (used to detect manual modifications)
@@ -39,7 +40,6 @@ public partial class MainWindow : Window
     private const string HelpUrl = "https://github.com/pocketpairjp/PalworldModUploader/blob/main/README.md";
 
     private readonly ObservableCollection<ModDirectoryEntry> _modEntries = new();
-    private readonly Dictionary<string, ulong> _subscribedFolders = new(StringComparer.OrdinalIgnoreCase);
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         AllowTrailingCommas = true,
@@ -64,6 +64,8 @@ public partial class MainWindow : Window
     private string? _pendingThumbnailFileName;
     private string[]? _selectedDependencies;
     private bool _suppressSelectionChange;
+
+    private string WorkshopPathCacheFile => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, WorkshopPathFileName);
 
     // Install rule type selections for new mod creation
     private bool _newModLuaSelected;
@@ -92,80 +94,140 @@ public partial class MainWindow : Window
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        var foundSubscribed = DiscoverWorkshopContentDirectory();
-        if (!foundSubscribed)
-        {
-            MessageBox.Show(
-                "No subscribed Palworld workshop items were detected. Please subscribe to at least one mod or manually select the workshop content directory.",
-                "Workshop Content Not Found",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-        }
+        InitializeWorkshopDirectory();
 
         if (!string.IsNullOrWhiteSpace(_workshopContentDirectory))
         {
-            WorkshopDirTextBox.Text = _workshopContentDirectory;
             LoadModsFromDirectory(_workshopContentDirectory);
         }
     }
 
-    private bool DiscoverWorkshopContentDirectory()
+    private void InitializeWorkshopDirectory()
     {
-        _subscribedFolders.Clear();
+        if (TrySetWorkshopDirectory(LoadPersistedWorkshopDirectory(), persist: false, loadMods: false))
+        {
+            return;
+        }
+
+        if (TrySetWorkshopDirectory(ResolveWorkshopContentDirectory(), persist: true, loadMods: false))
+        {
+            return;
+        }
+
+        StatusTextBlock.Text = "Select the Palworld workshop content directory.";
+    }
+
+    private string? ResolveWorkshopContentDirectory()
+    {
+        var defaultSteamPath = Path.Combine(@"C:\Program Files (x86)\Steam\steamapps\workshop\content", PalworldAppId.ToString());
+        if (Directory.Exists(defaultSteamPath))
+        {
+            return defaultSteamPath;
+        }
+
+        var exeDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        var bundledPath = Path.GetFullPath(Path.Combine(exeDirectory, "..", "..", "workshop", "content", PalworldAppId.ToString()));
+        if (Directory.Exists(bundledPath))
+        {
+            return bundledPath;
+        }
+
+        var promptResult = MessageBox.Show(
+            "Could not automatically locate the Palworld workshop content directory. Please select it manually.",
+            "Workshop Directory Required",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Information);
+
+        if (promptResult == MessageBoxResult.OK)
+        {
+            return PromptForWorkshopDirectory();
+        }
+
+        return null;
+    }
+
+    private string? LoadPersistedWorkshopDirectory()
+    {
         try
         {
-            var subscribedCount = SteamUGC.GetNumSubscribedItems();
-            if (subscribedCount == 0)
+            var cachePath = WorkshopPathCacheFile;
+            if (!File.Exists(cachePath))
             {
-                StatusTextBlock.Text = "No subscribed workshop items found.";
-                return false;
+                return null;
             }
 
-            var ids = new PublishedFileId_t[subscribedCount];
-            var fetched = SteamUGC.GetSubscribedItems(ids, subscribedCount);
-            if (fetched == 0)
+            var savedPath = File.ReadAllText(cachePath).Trim();
+            if (string.IsNullOrWhiteSpace(savedPath))
             {
-                StatusTextBlock.Text = "Failed to fetch subscribed workshop items.";
-                return false;
+                return null;
             }
 
-            for (var index = 0; index < fetched; index++)
+            if (Directory.Exists(savedPath))
             {
-                var id = ids[index];
-                var state = (EItemState)SteamUGC.GetItemState(id);
-                if (!state.HasFlag(EItemState.k_EItemStateInstalled))
-                {
-                    continue;
-                }
-
-                if (!SteamUGC.GetItemInstallInfo(id, out _, out var installFolder, 1024u, out _))
-                {
-                    continue;
-                }
-
-                if (!Directory.Exists(installFolder))
-                {
-                    continue;
-                }
-
-                var modDirectory = new DirectoryInfo(installFolder);
-                var parentDirectory = modDirectory.Parent;
-                if (parentDirectory == null)
-                {
-                    continue;
-                }
-
-                _workshopContentDirectory ??= parentDirectory.FullName;
-                _subscribedFolders[modDirectory.FullName] = id.m_PublishedFileId;
+                return savedPath;
             }
+
+            StatusTextBlock.Text = "Saved workshop directory was not found. Please select it again.";
         }
         catch (Exception ex)
         {
-            StatusTextBlock.Text = $"Error reading workshop subscriptions: {ex.Message}";
+            StatusTextBlock.Text = $"Failed to read saved workshop directory: {ex.Message}";
+        }
+
+        return null;
+    }
+
+    private void PersistWorkshopDirectory(string directoryPath)
+    {
+        try
+        {
+            File.WriteAllText(WorkshopPathCacheFile, directoryPath);
+        }
+        catch (Exception ex)
+        {
+            StatusTextBlock.Text = $"Failed to save workshop directory: {ex.Message}";
+        }
+    }
+
+    private bool TrySetWorkshopDirectory(string? directoryPath, bool persist, bool loadMods = true)
+    {
+        if (string.IsNullOrWhiteSpace(directoryPath) || !Directory.Exists(directoryPath))
+        {
             return false;
         }
 
-        return _subscribedFolders.Count > 0;
+        _workshopContentDirectory = directoryPath;
+        WorkshopDirTextBox.Text = _workshopContentDirectory;
+
+        if (persist)
+        {
+            PersistWorkshopDirectory(_workshopContentDirectory);
+        }
+
+        if (loadMods)
+        {
+            LoadModsFromDirectory(_workshopContentDirectory);
+        }
+
+        StatusTextBlock.Text = $"Workshop directory: {_workshopContentDirectory}";
+        return true;
+    }
+
+    private string? PromptForWorkshopDirectory()
+    {
+        var dialog = new System.Windows.Forms.FolderBrowserDialog
+        {
+            SelectedPath = _workshopContentDirectory ?? string.Empty,
+            ShowNewFolderButton = false
+        };
+
+        var result = dialog.ShowDialog();
+        if (result != System.Windows.Forms.DialogResult.OK)
+        {
+            return null;
+        }
+
+        return dialog.SelectedPath;
     }
 
     private void LoadModsFromDirectory(string baseDirectory)
@@ -185,17 +247,10 @@ public partial class MainWindow : Window
             foreach (var directory in Directory.EnumerateDirectories(baseDirectory))
             {
                 var dirInfo = new DirectoryInfo(directory);
-                var entry = new ModDirectoryEntry(dirInfo.Name, dirInfo.FullName);
-
-                if (_subscribedFolders.TryGetValue(dirInfo.FullName, out var subscribedId))
+                var entry = new ModDirectoryEntry(dirInfo.Name, dirInfo.FullName)
                 {
-                    entry.IsSubscribed = true;
-                    entry.SubscribedPublishedFileId = subscribedId;
-                }
-                else
-                {
-                    entry.Metadata = LoadMetadata(dirInfo.FullName);
-                }
+                    Metadata = LoadMetadata(dirInfo.FullName)
+                };
 
                 var infoPath = Path.Combine(dirInfo.FullName, "Info.json");
                 if (File.Exists(infoPath))
@@ -335,27 +390,25 @@ public partial class MainWindow : Window
             _selectedDependencies = _selectedEntry.Info?.Dependencies;
             UpdateDependenciesDisplay();
 
-            // Enable editing only for non-subscribed mods
-            var canEdit = !_selectedEntry.IsSubscribed;
-            ModNameTextBox.IsEnabled = canEdit;
-            PackageNameTextBox.IsEnabled = canEdit;
-            VersionTextBox.IsEnabled = canEdit;
-            MinRevisionTextBox.IsEnabled = canEdit;
-            AuthorTextBox.IsEnabled = canEdit;
-            ThumbnailDropArea.IsEnabled = canEdit;
-            ThumbnailDropArea.AllowDrop = canEdit;
-            ThumbnailDropArea.Cursor = canEdit ? System.Windows.Input.Cursors.Hand : System.Windows.Input.Cursors.Arrow;
-            EditDependenciesButton.IsEnabled = canEdit;
+            ModNameTextBox.IsEnabled = true;
+            PackageNameTextBox.IsEnabled = true;
+            VersionTextBox.IsEnabled = true;
+            MinRevisionTextBox.IsEnabled = true;
+            AuthorTextBox.IsEnabled = true;
+            ThumbnailDropArea.IsEnabled = true;
+            ThumbnailDropArea.AllowDrop = true;
+            ThumbnailDropArea.Cursor = System.Windows.Input.Cursors.Hand;
+            EditDependenciesButton.IsEnabled = true;
 
             // InstallRule checkboxes: only enable if editable AND InstallRules are standard
-            var canEditInstallRules = canEdit && isInstallRuleStandard;
+            var canEditInstallRules = isInstallRuleStandard;
             LuaTypeCheckBox.IsEnabled = canEditInstallRules;
             PaksTypeCheckBox.IsEnabled = canEditInstallRules;
             LogicModsTypeCheckBox.IsEnabled = canEditInstallRules;
             PalSchemaTypeCheckBox.IsEnabled = canEditInstallRules;
-            InstallRuleManualWarning.Visibility = (canEdit && !isInstallRuleStandard) ? Visibility.Visible : Visibility.Collapsed;
+            InstallRuleManualWarning.Visibility = !isInstallRuleStandard ? Visibility.Visible : Visibility.Collapsed;
 
-            UploadButton.IsEnabled = !_selectedEntry.IsSubscribed;
+            UploadButton.IsEnabled = true;
             OpenModDirectoryButton.IsEnabled = true;
             OpenInSteamButton.IsEnabled = true;
             SaveModInfoButton.IsEnabled = false;
@@ -424,21 +477,16 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new System.Windows.Forms.FolderBrowserDialog
-        {
-            SelectedPath = _workshopContentDirectory ?? string.Empty,
-            ShowNewFolderButton = false
-        };
-
-        var result = dialog.ShowDialog();
-        if (result != System.Windows.Forms.DialogResult.OK)
+        var selectedPath = PromptForWorkshopDirectory();
+        if (string.IsNullOrWhiteSpace(selectedPath))
         {
             return;
         }
 
-        _workshopContentDirectory = dialog.SelectedPath;
-        WorkshopDirTextBox.Text = _workshopContentDirectory;
-        LoadModsFromDirectory(_workshopContentDirectory);
+        if (!TrySetWorkshopDirectory(selectedPath, persist: true))
+        {
+            StatusTextBlock.Text = "Selected workshop directory does not exist.";
+        }
     }
 
     private void ReloadButton_Click(object sender, RoutedEventArgs e)
@@ -450,21 +498,26 @@ public partial class MainWindow : Window
 
         var selectedFullPath = (_selectedEntry ?? ModsDataGrid.SelectedItem as ModDirectoryEntry)?.FullPath;
 
-        DiscoverWorkshopContentDirectory();
         var currentDirectory = WorkshopDirTextBox.Text;
-        if (!string.IsNullOrWhiteSpace(currentDirectory))
+        if (string.IsNullOrWhiteSpace(currentDirectory))
         {
-            _workshopContentDirectory = currentDirectory;
-            LoadModsFromDirectory(_workshopContentDirectory);
+            StatusTextBlock.Text = "Select the Palworld workshop content directory first.";
+            return;
+        }
 
-            if (!string.IsNullOrWhiteSpace(selectedFullPath))
+        if (!TrySetWorkshopDirectory(currentDirectory, persist: true))
+        {
+            StatusTextBlock.Text = "Selected workshop directory does not exist.";
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedFullPath))
+        {
+            var toSelect = _modEntries.FirstOrDefault(m => string.Equals(m.FullPath, selectedFullPath, StringComparison.OrdinalIgnoreCase));
+            if (toSelect != null)
             {
-                var toSelect = _modEntries.FirstOrDefault(m => string.Equals(m.FullPath, selectedFullPath, StringComparison.OrdinalIgnoreCase));
-                if (toSelect != null)
-                {
-                    ModsDataGrid.SelectedItem = toSelect;
-                    ModsDataGrid.ScrollIntoView(toSelect);
-                }
+                ModsDataGrid.SelectedItem = toSelect;
+                ModsDataGrid.ScrollIntoView(toSelect);
             }
         }
     }
@@ -603,12 +656,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_selectedEntry.IsSubscribed)
-        {
-            MessageBox.Show("Subscribed mods cannot be uploaded.", "Upload Blocked", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
         var validationError = ValidateModEntry(_selectedEntry);
         if (validationError is { Length: > 0 })
         {
@@ -743,7 +790,6 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(lastVersion) && string.Equals(currentVersion, lastVersion, StringComparison.OrdinalIgnoreCase))
         {
             var res = MessageBox.Show(
-                // already subscribed user won't update if version is same
                 $"Info.json Version ({currentVersion}) has not changed since the last published version. There is" +
                 " a risk that the update may not be recognized by Palworld. Do you want to continue?",
                 "Version Missing",
@@ -1121,7 +1167,7 @@ public partial class MainWindow : Window
 
     private void ThumbnailDropArea_DragOver(object sender, System.Windows.DragEventArgs e)
     {
-        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        if (_selectedEntry == null)
         {
             e.Effects = System.Windows.DragDropEffects.None;
             e.Handled = true;
@@ -1161,7 +1207,7 @@ public partial class MainWindow : Window
         ThumbnailDropArea.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(204, 204, 204));
         ThumbnailDropArea.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 248, 248));
 
-        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        if (_selectedEntry == null)
         {
             return;
         }
@@ -1190,7 +1236,7 @@ public partial class MainWindow : Window
 
     private void ThumbnailDropArea_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        if (_selectedEntry == null)
         {
             return;
         }
@@ -1344,12 +1390,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_selectedEntry.IsSubscribed)
-        {
-            MessageBox.Show("Cannot modify subscribed mods.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         // Validate MinRevision is a valid integer if provided
         int? minRevision = null;
         var minRevisionText = MinRevisionTextBox.Text.Trim();
@@ -1475,7 +1515,7 @@ public partial class MainWindow : Window
 
     private void EditDependenciesButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        if (_selectedEntry == null)
         {
             return;
         }
