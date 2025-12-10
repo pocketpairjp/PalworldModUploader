@@ -16,6 +16,7 @@ using Steamworks;
 using System.Windows.Input;
 using System.Security.Cryptography;
 using System.Windows.Media;
+using System.Threading.Tasks;
 using MessageBox = System.Windows.MessageBox;
 
 namespace PalworldModUploader;
@@ -26,6 +27,13 @@ namespace PalworldModUploader;
 public partial class MainWindow : Window
 {
     private const uint PalworldAppId = 1623730;
+    private const string WorkshopPathCacheFileName = "workshop_path.txt";
+    private static readonly string DefaultSteamWorkshopPath = Path.Combine(
+        @"C:\Program Files (x86)\Steam",
+        "steamapps",
+        "workshop",
+        "content",
+        PalworldAppId.ToString());
     private static readonly string[] ValidInstallRuleTypes = { "Lua", "Paks", "LogicMods", "UE4SS", "PalSchema" };
 
     // Expected default targets for each supported InstallRule type (used to detect manual modifications)
@@ -51,6 +59,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _progressTimer;
     private readonly CallResult<CreateItemResult_t> _createItemResult;
     private readonly CallResult<SubmitItemUpdateResult_t> _submitItemResult;
+    private readonly string _workshopPathCacheFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, WorkshopPathCacheFileName);
 
     private string? _workshopContentDirectory;
     private ModDirectoryEntry? _selectedEntry;
@@ -90,82 +99,269 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
     }
 
-    private void OnLoaded(object? sender, RoutedEventArgs e)
+    private async void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        var foundSubscribed = DiscoverWorkshopContentDirectory();
-        if (!foundSubscribed)
+        var foundSubscribed = await DiscoverWorkshopContentDirectoryAsync();
+        if (string.IsNullOrWhiteSpace(_workshopContentDirectory))
         {
             MessageBox.Show(
-                "No subscribed Palworld workshop items were detected. Please subscribe to at least one mod or manually select the workshop content directory.",
+                "The Palworld workshop directory could not be found automatically. The tool tried your Steam subscriptions and common install locations. Please set the workshop content directory manually.",
                 "Workshop Content Not Found",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
+            return;
         }
 
-        if (!string.IsNullOrWhiteSpace(_workshopContentDirectory))
+        WorkshopDirTextBox.Text = _workshopContentDirectory;
+        LoadModsFromDirectory(_workshopContentDirectory);
+
+        if (!foundSubscribed && _subscribedFolders.Count == 0)
         {
-            WorkshopDirTextBox.Text = _workshopContentDirectory;
-            LoadModsFromDirectory(_workshopContentDirectory);
+            StatusTextBlock.Text = "No workshop subscriptions were detected via Steam. Using the configured directory.";
         }
     }
 
-    private bool DiscoverWorkshopContentDirectory()
+    private async Task<bool> DiscoverWorkshopContentDirectoryAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_workshopContentDirectory) && !Directory.Exists(_workshopContentDirectory))
+        {
+            _workshopContentDirectory = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_workshopContentDirectory))
+        {
+            TryLoadPersistedWorkshopDirectory();
+        }
+
+        var foundSubscribed = await RefreshSubscribedItemsAsync();
+
+        if (string.IsNullOrWhiteSpace(_workshopContentDirectory))
+        {
+            var resolvedDirectory = TryResolveWorkshopContentDirectory();
+            if (!string.IsNullOrWhiteSpace(resolvedDirectory))
+            {
+                _workshopContentDirectory = resolvedDirectory;
+                StatusTextBlock.Text = $"Workshop directory set to: {_workshopContentDirectory}";
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(_workshopContentDirectory) && Directory.Exists(_workshopContentDirectory))
+        {
+            PersistWorkshopDirectory(_workshopContentDirectory);
+        }
+
+        return foundSubscribed;
+    }
+
+    private async Task<bool> RefreshSubscribedItemsAsync()
     {
         _subscribedFolders.Clear();
+
+        uint pageNumber = 1;
+        uint processedResults = 0;
+        uint totalResults = 0;
+        var receivedAnyResult = false;
+
+        while (true)
+        {
+            var queryResult = await SendSubscribedItemsQueryAsync(pageNumber);
+            if (queryResult == null)
+            {
+                break;
+            }
+
+            var (data, ioFailure) = queryResult.Value;
+            try
+            {
+                if (ioFailure)
+                {
+                    StatusTextBlock.Text = "Error reading workshop subscriptions (Steam I/O failure).";
+                    break;
+                }
+
+                if (data.m_eResult != EResult.k_EResultOK)
+                {
+                    StatusTextBlock.Text = $"Failed to read workshop subscriptions: {data.m_eResult}";
+                    break;
+                }
+
+                receivedAnyResult = receivedAnyResult || data.m_unNumResultsReturned > 0 || data.m_unTotalMatchingResults > 0;
+
+                totalResults = data.m_unTotalMatchingResults;
+                ProcessSubscriptionResults(data);
+
+                processedResults += data.m_unNumResultsReturned;
+                if (processedResults >= totalResults || data.m_unNumResultsReturned == 0)
+                {
+                    break;
+                }
+
+                pageNumber++;
+            }
+            finally
+            {
+                SteamUGC.ReleaseQueryUGCRequest(data.m_handle);
+            }
+        }
+
+        return receivedAnyResult && _subscribedFolders.Count > 0;
+    }
+
+    private async Task<(SteamUGCQueryCompleted_t Data, bool IoFailure)?> SendSubscribedItemsQueryAsync(uint pageNumber)
+    {
         try
         {
-            var subscribedCount = SteamUGC.GetNumSubscribedItems();
-            if (subscribedCount == 0)
+            var queryHandle = SteamUGC.CreateQueryUserUGCRequest(
+                SteamUser.GetSteamID().GetAccountID(),
+                EUserUGCList.k_EUserUGCList_Subscribed,
+                EUGCMatchingUGCType.k_EUGCMatchingUGCType_Items,
+                EUserUGCListSortOrder.k_EUserUGCListSortOrder_CreationOrderDesc,
+                GetToolAppId(),
+                new AppId_t(PalworldAppId),
+                pageNumber);
+
+            if (queryHandle == UGCQueryHandle_t.Invalid)
             {
-                StatusTextBlock.Text = "No subscribed workshop items found.";
-                return false;
+                StatusTextBlock.Text = "Failed to create Steam Workshop query.";
+                return null;
             }
 
-            var ids = new PublishedFileId_t[subscribedCount];
-            var fetched = SteamUGC.GetSubscribedItems(ids, subscribedCount);
-            if (fetched == 0)
+            var apiCall = SteamUGC.SendQueryUGCRequest(queryHandle);
+            if (apiCall == SteamAPICall_t.Invalid)
             {
-                StatusTextBlock.Text = "Failed to fetch subscribed workshop items.";
-                return false;
+                SteamUGC.ReleaseQueryUGCRequest(queryHandle);
+                StatusTextBlock.Text = "Failed to send Steam Workshop query.";
+                return null;
             }
 
-            for (var index = 0; index < fetched; index++)
+            var tcs = new TaskCompletionSource<(SteamUGCQueryCompleted_t, bool)>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var queryResult = CallResult<SteamUGCQueryCompleted_t>.Create((data, ioFailure) =>
             {
-                var id = ids[index];
-                var state = (EItemState)SteamUGC.GetItemState(id);
-                if (!state.HasFlag(EItemState.k_EItemStateInstalled))
-                {
-                    continue;
-                }
+                tcs.TrySetResult((data, ioFailure));
+            });
 
-                if (!SteamUGC.GetItemInstallInfo(id, out _, out var installFolder, 1024u, out _))
-                {
-                    continue;
-                }
-
-                if (!Directory.Exists(installFolder))
-                {
-                    continue;
-                }
-
-                var modDirectory = new DirectoryInfo(installFolder);
-                var parentDirectory = modDirectory.Parent;
-                if (parentDirectory == null)
-                {
-                    continue;
-                }
-
-                _workshopContentDirectory ??= parentDirectory.FullName;
-                _subscribedFolders[modDirectory.FullName] = id.m_PublishedFileId;
-            }
+            queryResult.Set(apiCall);
+            return await tcs.Task.ConfigureAwait(true);
         }
         catch (Exception ex)
         {
-            StatusTextBlock.Text = $"Error reading workshop subscriptions: {ex.Message}";
-            return false;
+            StatusTextBlock.Text = $"Error starting Steam workshop query: {ex.Message}";
+            return null;
+        }
+    }
+
+    private void ProcessSubscriptionResults(SteamUGCQueryCompleted_t data)
+    {
+        for (uint i = 0; i < data.m_unNumResultsReturned; i++)
+        {
+            if (!SteamUGC.GetQueryUGCResult(data.m_handle, i, out var details))
+            {
+                continue;
+            }
+
+            var publishedFileId = details.m_nPublishedFileId;
+            var state = (EItemState)SteamUGC.GetItemState(publishedFileId);
+            if (!state.HasFlag(EItemState.k_EItemStateInstalled))
+            {
+                continue;
+            }
+
+            if (!SteamUGC.GetItemInstallInfo(publishedFileId, out _, out var installFolder, 1024u, out _))
+            {
+                continue;
+            }
+
+            if (!Directory.Exists(installFolder))
+            {
+                continue;
+            }
+
+            var modDirectory = new DirectoryInfo(installFolder);
+            var parentDirectory = modDirectory.Parent;
+            if (parentDirectory == null)
+            {
+                continue;
+            }
+
+            _workshopContentDirectory ??= parentDirectory.FullName;
+            _subscribedFolders[modDirectory.FullName] = publishedFileId.m_PublishedFileId;
+        }
+    }
+
+    private bool TryLoadPersistedWorkshopDirectory()
+    {
+        if (!string.IsNullOrWhiteSpace(_workshopContentDirectory))
+        {
+            return true;
         }
 
-        return _subscribedFolders.Count > 0;
+        try
+        {
+            if (!File.Exists(_workshopPathCacheFilePath))
+            {
+                return false;
+            }
+
+            var savedPath = File.ReadAllText(_workshopPathCacheFilePath).Trim();
+            if (string.IsNullOrWhiteSpace(savedPath) || !Directory.Exists(savedPath))
+            {
+                return false;
+            }
+
+            _workshopContentDirectory = savedPath;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusTextBlock.Text = $"Failed to load saved workshop directory: {ex.Message}";
+            return false;
+        }
+    }
+
+    private void PersistWorkshopDirectory(string directoryPath)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(directoryPath) || !Directory.Exists(directoryPath))
+            {
+                return;
+            }
+
+            File.WriteAllText(_workshopPathCacheFilePath, directoryPath);
+        }
+        catch (Exception ex)
+        {
+            StatusTextBlock.Text = $"Failed to save workshop directory: {ex.Message}";
+        }
+    }
+
+    private string? TryResolveWorkshopContentDirectory()
+    {
+        if (Directory.Exists(DefaultSteamWorkshopPath))
+        {
+            return DefaultSteamWorkshopPath;
+        }
+
+        var exeDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        var relativePath = Path.GetFullPath(Path.Combine(
+            exeDirectory,
+            "..",
+            "..",
+            "workshop",
+            "content",
+            PalworldAppId.ToString()));
+
+        if (Directory.Exists(relativePath))
+        {
+            return relativePath;
+        }
+
+        return null;
+    }
+
+    private static AppId_t GetToolAppId()
+    {
+        return SteamUtils.GetAppID();
     }
 
     private void LoadModsFromDirectory(string baseDirectory)
@@ -437,11 +633,12 @@ public partial class MainWindow : Window
         }
 
         _workshopContentDirectory = dialog.SelectedPath;
+        PersistWorkshopDirectory(_workshopContentDirectory);
         WorkshopDirTextBox.Text = _workshopContentDirectory;
         LoadModsFromDirectory(_workshopContentDirectory);
     }
 
-    private void ReloadButton_Click(object sender, RoutedEventArgs e)
+    private async void ReloadButton_Click(object sender, RoutedEventArgs e)
     {
         if (!ConfirmDiscardUnsavedChanges())
         {
@@ -450,21 +647,32 @@ public partial class MainWindow : Window
 
         var selectedFullPath = (_selectedEntry ?? ModsDataGrid.SelectedItem as ModDirectoryEntry)?.FullPath;
 
-        DiscoverWorkshopContentDirectory();
-        var currentDirectory = WorkshopDirTextBox.Text;
-        if (!string.IsNullOrWhiteSpace(currentDirectory))
-        {
-            _workshopContentDirectory = currentDirectory;
-            LoadModsFromDirectory(_workshopContentDirectory);
+        var currentDirectory = WorkshopDirTextBox.Text?.Trim();
+        _workshopContentDirectory = string.IsNullOrWhiteSpace(currentDirectory) ? null : currentDirectory;
 
-            if (!string.IsNullOrWhiteSpace(selectedFullPath))
+        var foundSubscribed = await DiscoverWorkshopContentDirectoryAsync();
+        if (string.IsNullOrWhiteSpace(_workshopContentDirectory))
+        {
+            StatusTextBlock.Text = "Workshop content directory not set. Please select the workshop folder.";
+            return;
+        }
+
+        WorkshopDirTextBox.Text = _workshopContentDirectory;
+        PersistWorkshopDirectory(_workshopContentDirectory);
+        LoadModsFromDirectory(_workshopContentDirectory);
+
+        if (!foundSubscribed && _subscribedFolders.Count == 0)
+        {
+            StatusTextBlock.Text = "No workshop subscriptions were detected via Steam. Loaded the configured directory.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedFullPath))
+        {
+            var toSelect = _modEntries.FirstOrDefault(m => string.Equals(m.FullPath, selectedFullPath, StringComparison.OrdinalIgnoreCase));
+            if (toSelect != null)
             {
-                var toSelect = _modEntries.FirstOrDefault(m => string.Equals(m.FullPath, selectedFullPath, StringComparison.OrdinalIgnoreCase));
-                if (toSelect != null)
-                {
-                    ModsDataGrid.SelectedItem = toSelect;
-                    ModsDataGrid.ScrollIntoView(toSelect);
-                }
+                ModsDataGrid.SelectedItem = toSelect;
+                ModsDataGrid.ScrollIntoView(toSelect);
             }
         }
     }
