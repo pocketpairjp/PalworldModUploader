@@ -1579,8 +1579,17 @@ public partial class MainWindow : Window
             ModInfo info;
             if (File.Exists(infoPath))
             {
-                using var readStream = File.OpenRead(infoPath);
-                info = JsonSerializer.Deserialize<ModInfo>(readStream, _jsonOptions) ?? new ModInfo();
+                try
+                {
+                    using var readStream = File.OpenRead(infoPath);
+                    info = JsonSerializer.Deserialize<ModInfo>(readStream, _jsonOptions) ?? new ModInfo();
+                }
+                catch (Exception ex)
+                {
+                    TryBackupInvalidInfoJson(infoPath);
+                    info = new ModInfo();
+                    StatusTextBlock.Text = $"Info.json was invalid and will be overwritten: {ex.Message}";
+                }
             }
             else
             {
@@ -1598,7 +1607,10 @@ public partial class MainWindow : Window
             if (_pendingThumbnailSourcePath is { } pendingThumbnail && _pendingThumbnailFileName is { Length: > 0 } pendingFileName)
             {
                 var targetPath = Path.Combine(_selectedEntry.FullPath, pendingFileName);
-                File.Copy(pendingThumbnail, targetPath, true);
+                if (!IsSameFilePath(pendingThumbnail, targetPath))
+                {
+                    File.Copy(pendingThumbnail, targetPath, true);
+                }
                 info.Thumbnail = pendingFileName;
                 DisplayThumbnail(targetPath);
             }
@@ -1652,6 +1664,7 @@ public partial class MainWindow : Window
 
             // Update in-memory entry
             _selectedEntry.Info = info;
+            _selectedEntry.InfoLoadError = null;
 
             ClearPendingThumbnail();
 
@@ -1662,6 +1675,50 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show($"Failed to save Info.json: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static bool IsSameFilePath(string firstPath, string secondPath)
+    {
+        try
+        {
+            var fullFirstPath = Path.GetFullPath(firstPath);
+            var fullSecondPath = Path.GetFullPath(secondPath);
+            return string.Equals(fullFirstPath, fullSecondPath, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return string.Equals(firstPath, secondPath, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private static void TryBackupInvalidInfoJson(string infoPath)
+    {
+        try
+        {
+            if (!File.Exists(infoPath))
+            {
+                return;
+            }
+
+            var directory = Path.GetDirectoryName(infoPath);
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                return;
+            }
+
+            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            var backupPath = Path.Combine(directory, $"Info.invalid.{timestamp}.json");
+            if (File.Exists(backupPath))
+            {
+                backupPath = Path.Combine(directory, $"Info.invalid.{timestamp}.{Guid.NewGuid():N}.json");
+            }
+
+            File.Copy(infoPath, backupPath, overwrite: false);
+        }
+        catch
+        {
+            // Intentionally ignore backup failures (non-fatal).
         }
     }
 
