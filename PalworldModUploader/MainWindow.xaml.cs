@@ -45,6 +45,7 @@ public partial class MainWindow : Window
         { "PalSchema", new[] { "./PalSchema/" } }
     };
     private const string HelpUrl = "https://github.com/pocketpairjp/PalworldModUploader/blob/main/README.md";
+    private const string WorkshopAgreementUrl = "https://steamcommunity.com/sharedfiles/workshoplegalagreement";
 
     private readonly ObservableCollection<ModDirectoryEntry> _modEntries = new();
     private readonly Dictionary<string, ulong> _subscribedFolders = new(StringComparer.OrdinalIgnoreCase);
@@ -873,19 +874,25 @@ public partial class MainWindow : Window
         StatusTextBlock.Text = "Submitting workshop update...";
     }
 
-    private void HelpButton_Click(object sender, RoutedEventArgs e)
+    private void HelpButton_Click(object sender, RoutedEventArgs e) =>
+        OpenUrl(HelpUrl, "Help Error", "Failed to open help documentation");
+
+    private void WorkshopAgreementButton_Click(object sender, RoutedEventArgs e) =>
+        OpenUrl(WorkshopAgreementUrl, "Workshop Agreement Error", "Failed to open the Steam Workshop legal agreement");
+
+    private void OpenUrl(string url, string errorTitle, string errorDescription)
     {
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            Process.Start(new ProcessStartInfo
             {
-                FileName = HelpUrl,
+                FileName = url,
                 UseShellExecute = true
             });
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to open help documentation: {ex.Message}", "Help Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"{errorDescription}: {ex.Message}", errorTitle, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
