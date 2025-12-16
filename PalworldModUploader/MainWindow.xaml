@@ -368,7 +368,12 @@
             <Button Content="Guide"
                     Width="90"
                     Height="32"
+                    Margin="0,0,12,0"
                     Click="HelpButton_Click" />
+            <Button Content="Workshop Agreement"
+                    Width="170"
+                    Height="32"
+                    Click="WorkshopAgreementButton_Click" />
         </StackPanel>
 
 
