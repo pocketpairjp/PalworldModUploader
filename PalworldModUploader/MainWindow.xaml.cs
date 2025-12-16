@@ -1483,6 +1483,12 @@ public partial class MainWindow : Window
 
         foreach (var rule in installRules)
         {
+            // The UI has no way to represent dedicated-server-only rules.
+            if (rule.IsServer == true)
+            {
+                return false;
+            }
+
             // Check if the type is one of our supported checkbox types
             if (!ExpectedInstallRuleTargets.TryGetValue(rule.Type ?? string.Empty, out var expectedTargets))
             {
@@ -1603,6 +1609,8 @@ public partial class MainWindow : Window
                 info = new ModInfo();
             }
 
+            var existingInstallRules = info.InstallRule;
+
             // Update fields from text boxes
             info.ModName = ModNameTextBox.Text.Trim();
             info.PackageName = PackageNameTextBox.Text.Trim();
@@ -1630,7 +1638,7 @@ public partial class MainWindow : Window
             info.Dependencies = _selectedDependencies is { Length: > 0 } ? _selectedDependencies : null;
 
             // Update InstallRule based on checkboxes
-            if (IsInstallRuleStandard(_selectedEntry.Info?.InstallRule))
+            if (IsInstallRuleStandard(existingInstallRules))
             {
                 var installRules = new List<InstallRule>();
 
@@ -1662,7 +1670,7 @@ public partial class MainWindow : Window
             else
             {
                 // Preserve existing manually modified InstallRules
-                info.InstallRule = _selectedEntry.Info?.InstallRule;
+                info.InstallRule = existingInstallRules;
             }
 
             // Serialize and save
@@ -1674,6 +1682,7 @@ public partial class MainWindow : Window
             _selectedEntry.InfoLoadError = null;
 
             ClearPendingThumbnail();
+            UpdateModDetails();
 
             _hasUnsavedChanges = false;
             SaveModInfoButton.IsEnabled = false;

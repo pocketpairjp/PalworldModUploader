@@ -35,6 +35,10 @@ public sealed class InstallRule
     [JsonPropertyName("Type")]
     public string? Type { get; set; }
 
+    [JsonPropertyName("IsServer")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsServer { get; set; }
+
     [JsonPropertyName("Targets")]
     public string[]? Targets { get; set; }
 }
