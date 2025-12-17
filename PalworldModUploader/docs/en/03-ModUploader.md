@@ -108,7 +108,7 @@ When creating a mod for a server, you need to manually edit `Info.json` and add 
 For dedicated server installation steps and `Mods\PalModSettings.ini` configuration, the official documentation is also helpful.
 
 **Install Mods on a Server**
-https://docs.palworldgame.com/ja/
+https://docs.palworldgame.com/settings-and-operation/mod/
 
 ---
 

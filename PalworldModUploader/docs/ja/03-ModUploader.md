@@ -108,7 +108,7 @@ Palworldを起動し、オプションの「Mod管理」からModを有効化し
 専用サーバーへの導入手順や `Mods\PalModSettings.ini` の設定は、公式ドキュメントも参考になります。
 
 **サーバーにModを導入**
-https://docs.palworldgame.com/ja/
+https://docs.palworldgame.com/ja/settings-and-operation/mod/
 
 ---
 
