@@ -59,6 +59,9 @@
       <None Update="docs\ja\04-Tech.md">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <None Update="LICENSES\Steamworks.NET">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
     
 </Project>
