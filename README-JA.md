@@ -2,6 +2,10 @@
 
 Palworld v0.7 で追加された、公式Modローダーに対応するMod Uploaderのリポジトリです。
 
+## ダウンロード
+
+[https://github.com/pocketpairjp/PalworldModUploader/releases](https://github.com/pocketpairjp/PalworldModUploader/releases)
+
 ## 利用ガイド
 実際にModをアップロードするガイドは `PalworldModUploader/docs` をご覧ください。
 
