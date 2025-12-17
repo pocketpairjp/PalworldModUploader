@@ -2,6 +2,10 @@
 
 This repository contains the **Mod Uploader** that supports the official Mod Loader added in **Palworld v0.7**.
 
+## Download
+
+[https://github.com/pocketpairjp/PalworldModUploader/releases](https://github.com/pocketpairjp/PalworldModUploader/releases)
+
 ## Usage Guide
 
 For instructions on how to actually upload a mod, please see `PalworldModUploader/docs`.
