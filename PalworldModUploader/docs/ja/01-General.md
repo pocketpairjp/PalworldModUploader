@@ -1,6 +1,6 @@
 # 01-General.md
 
-2025年12月アップデート `v0.7` で導入された公式Modローダー・Steam Workshop連携について解説します。 このガイドはMod開発者向けです。利用については、下記ページをご覧ください。
+2025年12月アップデート `v0.7` で導入された公式Modローダー・ワークショップ連携について解説します。このガイドはMod開発者向けです。利用については、下記ページをご覧ください。
 
 **Mod使用ガイドライン**
 https://eula.pocketpair.jp/palworld-mod-guideline
@@ -11,12 +11,12 @@ https://docs.palworldgame.com/ja/
 ## The First Step
 
 Modに公式対応するにあたり、私たちは既存のModコミュニティを尊重することを優先しました。
-多くの既存のModは、特定のディレクトリ構造に当てはめるだけでSteam Workshopを通して簡単に利用することができます。
+多くの既存のModは、特定のディレクトリ構造に当てはめるだけでワークショップを通して簡単に利用することができます。
 
 現在のところ、公式Modローダーで対応しているのは下記の5種類です。
 - Paks (Resource Replacement)
 - Lua (UE4SS)
-- LogcMods (UE4SS)
+- LogicMods (UE4SS)
 - UE4SS本体
 - PalSchemaに依存するMod
 
@@ -39,7 +39,7 @@ https://okaetsu.github.io/PalSchema/
 公式Modローダーは下記プラットフォームで動作します。
 
 - Windows Steam
-- Windows Dedicated Server
+- Windows 専用サーバー
 
 ## 問題の報告
 Modに関わる問題を報告したい場合、問題によって窓口が異なります。
@@ -60,3 +60,6 @@ https://github.com/pocketpairjp/PalworldModUploader/issues
 ### Mod本体の問題
 特定のModが動作しない・ゲームがクラッシュするなどの問題は、ポケットペアの開発者が修正することが出来ません。
 
+---
+
+次: [02-Package.md](02-Package.md)

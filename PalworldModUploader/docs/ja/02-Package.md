@@ -5,9 +5,9 @@
 ## Palworld Mod Package
 公式ModローダーでModを読み込める形式にするには、下記の2つの準備が必要です。Palworld Mod Uploaderを利用することで、基本的な設定とテンプレートの生成をGUI上で行うことができます。
 
-### 1. Workshopディレクトリ
+### 1. ワークショップディレクトリ
 
-パッケージが配置されるフォルダです。多くの場合、Steam Workshopのフォルダになり、下記のようなSteamのWorkshopフォルダ内に配置された `1623730` フォルダが該当します。
+パッケージが配置されるフォルダです。多くの場合、Steamのワークショップフォルダ内に配置された `1623730` フォルダが該当します。
 
 ```
 C:\Program Files (x86)\Steam\steamapps\workshop\content\1623730
@@ -15,12 +15,12 @@ C:\Program Files (x86)\Steam\steamapps\workshop\content\1623730
 
 SteamでサブスクライブしたModは自動的にここに配置されるほか、Modを一から作成する場合もここにフォルダを作成して始めます。
 
-ゲーム本体の場合、このフォルダの場所はSteamと連携して自動的に取得されます。Dedicated Serverの場合、フォルダを明示的に指定する必要があります。下記ガイドをご覧ください。
+ゲーム本体の場合、このフォルダの場所はSteamと連携して自動的に取得されます。専用サーバーの場合、フォルダを明示的に指定する必要があります。下記ガイドをご覧ください。
 
 **サーバーにModを導入**
 https://docs.palworldgame.com/ja/
 
-パッケージのフォルダ名はSteamのアイテムIDと一致します。Palworld Mod Uplaoderを利用してパッケージを新規作成した場合、自動的にSteamのアイテムIDと一致します。
+パッケージのフォルダ名はSteamのアイテムIDと一致します。Palworld Mod Uploaderを利用してパッケージを新規作成した場合、自動的にSteamのアイテムIDと一致します。
 
 ### 2. Info.jsonファイル
 
@@ -60,3 +60,7 @@ https://docs.palworldgame.com/ja/
 | InstallRule  | Modのインストール方法                            |
 
 Palworld Mod Uploaderを利用した場合は、GUI経由で設定を行うことができます。手動で設定したい場合など、詳細な仕様については **04-Tech.md** を参照してください。
+
+---
+
+次: [03-ModUploader.md](03-ModUploader.md)

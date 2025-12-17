@@ -4,7 +4,7 @@
 
 ## PalModSettings.ini
 
-PalModSettings.ini は、有効となっているModや設定を保存するためのファイルで `Mods/PalModSettings.ini` に格納されています。ゲーム本体では、このファイルを直接編集する代わりに「Mod管理」メニューを通して操作を行うことができます。専用サーバーではこのファイルを直接編集してModの設定を行います。
+PalModSettings.ini は、有効となっているModや設定を保存するためのファイルで `Mods\PalModSettings.ini` に格納されています。ゲーム本体では、このファイルを直接編集する代わりに「Mod管理」メニューを通して操作を行うことができます。専用サーバーではこのファイルを直接編集してModの設定を行います。
 
 ```
 [PalModSettings]
@@ -18,11 +18,11 @@ ActiveModList=UE4SS
 全体でModを有効化するかどうかを指定します。
 
 **WorkshopRootDir** 
-ワークショップのディレクトリを指定します。Steamから何らかのワークショップアイテムをサブスクライブした状態でゲーム本体を起動すると自動的に追記されます。Dedicated Serverの場合は手動で設定する必要があります。
+ワークショップのディレクトリを指定します。Steamから何らかのワークショップアイテムをサブスクライブした状態でゲーム本体を起動すると自動的に追記されます。専用サーバーの場合は手動で設定する必要があります。
 
 **ActiveModList**
 現在有効なModのPackageNameを指定します。複数指定可能です。
-起動時に `%WorkshhopRootDir%/**/Info.json` をすべて確認し、PackageNameが合致したModが有効となります。
+起動時に `WorkshopRootDir` 配下の `Info.json` をすべて確認し、PackageNameが合致したModが有効となります。
 
 ## Info.json
 
@@ -30,7 +30,7 @@ Info.json の仕様について紹介します。
 
 ### Package Name
 
-Package NameはModを識別するために利用されます。厳密に他のWorkshopアイテムと被らないようにする必要はありませんが、同じPackage Nameが含まれるModをサブスクライブした場合はどちらか片方しか有効にならず、順番も保証されません。
+Package NameはModを識別するために利用されます。厳密に他のワークショップアイテムと被らないようにする必要はありませんが、同じPackage Nameが含まれるModをサブスクライブした場合はどちらか片方しか有効にならず、順番も保証されません。
 
 Install Typeに応じたインストール先に展開される際、Modを含むPackage Nameがフォルダ名として利用されます。
 
@@ -99,7 +99,7 @@ Targetsを変更することで、1つのModパッケージでゲーム本体・
 
 ## Modのインストール
 
-公式Modローダーでは、Palworldの起動時にModのインストール処理を行います。インストール処理は `Mods/PalModSettings.ini` を元に有効化・無効化が判断され、必要に応じてワークショップディレクトリからPalworldゲーム本体にModをコピーしインストールします。
+公式Modローダーでは、Palworldの起動時にModのインストール処理を行います。インストール処理は `Mods\PalModSettings.ini` を元に有効化・無効化が判断され、必要に応じてワークショップディレクトリからPalworldゲーム本体にModをコピーしインストールします。
 
 ## Modのアップデート
 
@@ -108,3 +108,7 @@ Targetsを変更することで、1つのModパッケージでゲーム本体・
 そのため、Versionに指定する値は厳密にMod本体のバージョンと一致している必要は無く、セマンティックバージョニングを採用する必要もありません。
 
 Mod作者としてModをアップデートする場合は、特殊な目的がある場合を除き、Versionを変更してからアップデートする必要があります。
+
+---
+
+最初に戻る: [01-General.md](01-General.md)

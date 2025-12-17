@@ -1,6 +1,6 @@
 # 03-ModUploader.md
 
-Palworld Mod Uploaderは、Workshopディレクトリ内のModパッケージ（`Info.json`）を編集し、Steam Workshopへアップロードするためのツールです。
+Palworld Mod Uploaderは、ワークショップディレクトリ内のModパッケージ（`Info.json`）を編集し、ワークショップへアップロードするためのツールです。
 
 ## 使い方
 
@@ -12,9 +12,9 @@ Steamを起動し、Palworldを所持しているアカウントでログイン�
 
 起動時にSteamの初期化に失敗すると `Steam Initialization Error` が表示され、ツールは終了します。Steamクライアントが起動しているか、ログインしているかを確認してください。
 
-### 2. Workshopディレクトリを設定する
+### 2. ワークショップディレクトリを設定する
 
-画面上部の `Workshop Content Directory` に、Workshopの `1623730` フォルダを指定します。通常は次のパスになります。
+画面上部の `Workshop Content Directory` に、ワークショップの `1623730` フォルダを指定します。通常は次のパスになります。
 
 ```
 C:\Program Files (x86)\Steam\steamapps\workshop\content\1623730
@@ -22,23 +22,23 @@ C:\Program Files (x86)\Steam\steamapps\workshop\content\1623730
 
 起動時にサブスクライブ済みアイテムから自動検出できない場合、`Workshop Content Not Found` が表示されます。`...` から手動でフォルダを選択してください。Steamのインストール先を変更している場合はパスも変わります。
 
-指定したパスは `workshop_path.txt` として `PalworldModUploader.exe` と同じフォルダに保存されます。 Modディレクトリに手動で変更した内容を読み込み直したい場合は `Reload` を押してください。
+指定したパスは `workshop_path.txt` として `PalworldModUploader.exe` と同じフォルダに保存されます。Modディレクトリに手動で変更した内容を読み込み直したい場合は `Reload` を押してください。
 
 ### 3. `Create New Mod` で新規作成する
 
 `Create New Mod` を押すと、作成したいModのタイプ（Lua / Paks / LogicMods / PalSchema）を選択できます。
 
-作成に成功すると、Workshopディレクトリ配下にフォルダが作成され、エクスプローラーで開きます。フォルダには次が生成されます。
+作成に成功すると、ワークショップディレクトリ配下にフォルダが作成され、エクスプローラーで開きます。フォルダには次が生成されます。
 
 - `Info.json`（ひな形。`ModName`/`PackageName` は `MyAwesomeMod`、`Author` はSteamの表示名が入ります）
 - `thumbnail.png`（同梱されている場合）
-- 選択したタイプのフォルダ（ `Scripts/`、`Paks/` など）
+- 選択したタイプのフォルダ（ `Scripts\`、`Paks\` など）
 - `.workshop.json`（ツール用のメタデータ。Published IDや前回アップロードした `Version` を保存します）
 
-この時点でSteam Workshopには空のアイテムとして登録されます。
-初回はSteam Workshopの利用規約への同意が求められることがあります。その場合は規約に同意してからやり直してください。
+この時点でワークショップには空のアイテムとして登録されます。
+初回はワークショップの利用規約への同意が求められることがあります。その場合は規約に同意してからやり直してください。
 
-#### Steam Workshopへの登録をバイパスする
+#### ワークショップへの登録をバイパスする
 
 `Shift` を押しながら `Create New Mod` をクリックすると、Steamに登録せずにローカルフォルダだけを作成します。自分だけが利用するデバッグ用Modやテスト用Modを作成したい場合に便利です。
 
@@ -48,16 +48,16 @@ C:\Program Files (x86)\Steam\steamapps\workshop\content\1623730
 
 Create New Modが成功するとフォルダが開きます。導入したいModの形式に沿ってファイルを設置してください。
 
-**Pakファイル: `Paks/`**
+**Pakファイル: `Paks\`**
 見た目変更やデータベース変更系でよくあるModタイプです。Unreal Engineのリソースを直接上書きすることでModdingを実現します。
 
-**Luaスクリプト: `Scripts/`**
+**Luaスクリプト: `Scripts\`**
 制限変更系でよくあるModタイプです。Unreal EngineのC++コードに干渉することでModdingを実現します。
 
-**LogicMods: `LogicMods/`**
+**LogicMods: `LogicMods\`**
 新しい要素を追加したりゲーム内のロジックを大きく書き換えるModでよく利用されます。
 
-**PalSchema: `PalSchema/`**
+**PalSchema: `PalSchema\`**
 PalSchemaに依存するModで利用されます。たいていの場合、UE4SSとPalSchema本体で利用されます。
 
 ### 5. Mod情報を編集する（`Save Info.json`）
@@ -84,10 +84,10 @@ PalSchemaに依存するModで利用されます。たいていの場合、UE4SS
 
 Palworldを起動し、オプションの「Mod管理」からModを有効化して動作確認します。表示されない場合は下記を確認してください。
 
-- Workshopディレクトリの指定が正しい
+- ワークショップディレクトリの指定が正しい
 - `Info.json` が適切なJSONになっている
 
-### 7. Steam Workshopにアップロードする（`Upload To Steam`）
+### 7. ワークショップにアップロードする（`Upload To Steam`）
 
 作成したModを選択し、`Upload To Steam` を押すとアップロードできます。
 
@@ -99,13 +99,17 @@ Palworldを起動し、オプションの「Mod管理」からModを有効化し
 
 また、前回アップロード時の `Version` と同じ場合、Palworld側でアップデートとして認識されない可能性があるため警告が出ます。アップデート時は `Version` を変更してください。
 
-アップロード開始前にChange Notesの入力が求められます。完了するとSteam Workshopページが開きます。 公開設定や説明文、追加の画像はSteam Workshopページ側で設定してください。
+アップロード開始前にChange Notesの入力が求められます。完了するとワークショップページが開きます。公開設定や説明文、追加の画像はワークショップページ側で設定してください。
 
 ## サーバーで利用するModを作成する
 
 サーバー向けModを作成する場合、 `Info.json` を手動で修正し、必要なファイルを `"IsServer": true` として指定するオブジェクトを追加する必要があります。詳しくは `04-Tech.md` を参照してください。
 
-Dedicated Serverへの導入手順や `Mods/PalModSettings.ini` の設定は、公式ドキュメントも参考になります。
+専用サーバーへの導入手順や `Mods\PalModSettings.ini` の設定は、公式ドキュメントも参考になります。
 
 **サーバーにModを導入**
 https://docs.palworldgame.com/ja/
+
+---
+
+次: [04-Tech.md](04-Tech.md)
