@@ -790,9 +790,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        MessageBox.Show("Subscribed mods cannot be uploaded.", "Upload Blocked", MessageBoxButton.OK, MessageBoxImage.Information);
-        return;
-
         var validationError = ValidateModEntry(_selectedEntry);
         if (validationError is { Length: > 0 })
         {
