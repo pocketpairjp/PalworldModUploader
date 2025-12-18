@@ -366,7 +366,6 @@ public partial class MainWindow : Window
 
                 if (ulong.TryParse(dirInfo.Name, out var directoryId) && _subscribedItemIds.Contains(directoryId))
                 {
-                    entry.IsSubscribed = true;
                     entry.SubscribedPublishedFileId = directoryId;
                 }
                 else
@@ -512,8 +511,7 @@ public partial class MainWindow : Window
             _selectedDependencies = _selectedEntry.Info?.Dependencies;
             UpdateDependenciesDisplay();
 
-            // Enable editing only for non-subscribed mods
-            var canEdit = !_selectedEntry.IsSubscribed;
+            var canEdit = true;
             ModNameTextBox.IsEnabled = canEdit;
             PackageNameTextBox.IsEnabled = canEdit;
             VersionTextBox.IsEnabled = canEdit;
@@ -532,7 +530,7 @@ public partial class MainWindow : Window
             PalSchemaTypeCheckBox.IsEnabled = canEditInstallRules;
             InstallRuleManualWarning.Visibility = (canEdit && !isInstallRuleStandard) ? Visibility.Visible : Visibility.Collapsed;
 
-            UploadButton.IsEnabled = !_selectedEntry.IsSubscribed;
+            UploadButton.IsEnabled = true;
             OpenModDirectoryButton.IsEnabled = true;
             OpenInSteamButton.IsEnabled = true;
             SaveModInfoButton.IsEnabled = false;
@@ -792,11 +790,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_selectedEntry.IsSubscribed)
-        {
-            MessageBox.Show("Subscribed mods cannot be uploaded.", "Upload Blocked", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
+        MessageBox.Show("Subscribed mods cannot be uploaded.", "Upload Blocked", MessageBoxButton.OK, MessageBoxImage.Information);
+        return;
 
         var validationError = ValidateModEntry(_selectedEntry);
         if (validationError is { Length: > 0 })
@@ -1316,7 +1311,7 @@ public partial class MainWindow : Window
 
     private void ThumbnailDropArea_DragOver(object sender, System.Windows.DragEventArgs e)
     {
-        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        if (_selectedEntry == null)
         {
             e.Effects = System.Windows.DragDropEffects.None;
             e.Handled = true;
@@ -1356,7 +1351,7 @@ public partial class MainWindow : Window
         ThumbnailDropArea.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(204, 204, 204));
         ThumbnailDropArea.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 248, 248));
 
-        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        if (_selectedEntry == null)
         {
             return;
         }
@@ -1385,7 +1380,7 @@ public partial class MainWindow : Window
 
     private void ThumbnailDropArea_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        if (_selectedEntry == null)
         {
             return;
         }
@@ -1542,12 +1537,6 @@ public partial class MainWindow : Window
         if (_selectedEntry == null)
         {
             MessageBox.Show("No mod selected.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        if (_selectedEntry.IsSubscribed)
-        {
-            MessageBox.Show("Cannot modify subscribed mods.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -1736,7 +1725,7 @@ public partial class MainWindow : Window
 
     private void EditDependenciesButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedEntry == null || _selectedEntry.IsSubscribed)
+        if (_selectedEntry == null)
         {
             return;
         }
