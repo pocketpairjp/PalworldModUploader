@@ -12,6 +12,7 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
     private ModInfo? _info;
     private WorkshopMetadata? _metadata;
     private bool _isSubscribed;
+    private bool _isOwnedByUser;
     private string? _infoLoadError;
     private ulong? _subscribedPublishedFileId;
 
@@ -90,6 +91,21 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
 
             _isSubscribed = value;
             OnPropertyChanged(nameof(IsSubscribed));
+        }
+    }
+
+    public bool IsOwnedByUser
+    {
+        get => _isOwnedByUser;
+        set
+        {
+            if (_isOwnedByUser == value)
+            {
+                return;
+            }
+
+            _isOwnedByUser = value;
+            OnPropertyChanged(nameof(IsOwnedByUser));
         }
     }
 

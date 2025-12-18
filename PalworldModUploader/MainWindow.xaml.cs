@@ -48,7 +48,7 @@ public partial class MainWindow : Window
     private const string WorkshopAgreementUrl = "https://steamcommunity.com/sharedfiles/workshoplegalagreement";
 
     private readonly ObservableCollection<ModDirectoryEntry> _modEntries = new();
-    private ulong[] _subscribedItemIds = Array.Empty<ulong>();
+    private Dictionary<ulong, bool> _subscribedItemIds = new();
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         AllowTrailingCommas = true,
@@ -116,7 +116,7 @@ public partial class MainWindow : Window
         WorkshopDirTextBox.Text = _workshopContentDirectory;
         LoadModsFromDirectory(_workshopContentDirectory);
 
-        if (!foundSubscribed && _subscribedItemIds.Length == 0)
+        if (!foundSubscribed && _subscribedItemIds.Count == 0)
         {
             StatusTextBlock.Text = "No workshop subscriptions were detected via Steam. Using the configured directory.";
         }
@@ -156,9 +156,9 @@ public partial class MainWindow : Window
 
     private async Task<bool> RefreshSubscribedItemsAsync()
     {
-        _subscribedItemIds = Array.Empty<ulong>();
+        _subscribedItemIds = new Dictionary<ulong, bool>();
 
-        var subscribedItemIds = new List<ulong>();
+        var subscribedItemIds = new Dictionary<ulong, bool>();
 
         uint pageNumber = 1;
         uint processedResults = 0;
@@ -207,9 +207,9 @@ public partial class MainWindow : Window
             }
         }
 
-        _subscribedItemIds = subscribedItemIds.ToArray();
+        _subscribedItemIds = subscribedItemIds;
 
-        return receivedAnyResult && _subscribedItemIds.Length > 0;
+        return receivedAnyResult && _subscribedItemIds.Count > 0;
     }
 
     private async Task<(SteamUGCQueryCompleted_t Data, bool IoFailure)?> SendSubscribedItemsQueryAsync(uint pageNumber)
@@ -255,7 +255,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ProcessSubscriptionResults(SteamUGCQueryCompleted_t data, ICollection<ulong> subscribedItemIds)
+    private void ProcessSubscriptionResults(SteamUGCQueryCompleted_t data, IDictionary<ulong, bool> subscribedItemIds)
     {
         for (uint i = 0; i < data.m_unNumResultsReturned; i++)
         {
@@ -265,7 +265,8 @@ public partial class MainWindow : Window
             }
 
             var publishedFileId = details.m_nPublishedFileId;
-            subscribedItemIds.Add(publishedFileId.m_PublishedFileId);
+            var isOwnedByUser = details.m_ulSteamIDOwner == SteamUser.GetSteamID().m_SteamID;
+            subscribedItemIds[publishedFileId.m_PublishedFileId] = isOwnedByUser;
         }
     }
 
@@ -364,14 +365,16 @@ public partial class MainWindow : Window
                 var dirInfo = new DirectoryInfo(directory);
                 var entry = new ModDirectoryEntry(dirInfo.Name, dirInfo.FullName);
 
-                if (ulong.TryParse(dirInfo.Name, out var directoryId) && _subscribedItemIds.Contains(directoryId))
+                if (ulong.TryParse(dirInfo.Name, out var directoryId) && _subscribedItemIds.TryGetValue(directoryId, out var isOwnedByUser))
                 {
                     entry.IsSubscribed = true;
                     entry.SubscribedPublishedFileId = directoryId;
+                    entry.IsOwnedByUser = isOwnedByUser;
                 }
                 else
                 {
                     entry.Metadata = LoadMetadata(dirInfo.FullName);
+                    entry.IsOwnedByUser = false;
                 }
 
                 var infoPath = Path.Combine(dirInfo.FullName, "Info.json");
@@ -532,7 +535,7 @@ public partial class MainWindow : Window
             PalSchemaTypeCheckBox.IsEnabled = canEditInstallRules;
             InstallRuleManualWarning.Visibility = (canEdit && !isInstallRuleStandard) ? Visibility.Visible : Visibility.Collapsed;
 
-            UploadButton.IsEnabled = !_selectedEntry.IsSubscribed;
+            //UploadButton.IsEnabled = _selectedEntry.IsOwnedByUser;
             OpenModDirectoryButton.IsEnabled = true;
             OpenInSteamButton.IsEnabled = true;
             SaveModInfoButton.IsEnabled = false;
@@ -642,7 +645,7 @@ public partial class MainWindow : Window
         PersistWorkshopDirectory(_workshopContentDirectory);
         LoadModsFromDirectory(_workshopContentDirectory);
 
-        if (!foundSubscribed && _subscribedItemIds.Length == 0)
+        if (!foundSubscribed && _subscribedItemIds.Count == 0)
         {
             StatusTextBlock.Text = "No workshop subscriptions were detected via Steam. Loaded the configured directory.";
         }
