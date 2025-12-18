@@ -535,7 +535,7 @@ public partial class MainWindow : Window
             PalSchemaTypeCheckBox.IsEnabled = canEditInstallRules;
             InstallRuleManualWarning.Visibility = (canEdit && !isInstallRuleStandard) ? Visibility.Visible : Visibility.Collapsed;
 
-            UploadButton.IsEnabled = !_selectedEntry.IsSubscribed;
+            UploadButton.IsEnabled = _selectedEntry.IsOwnedByUser;
             OpenModDirectoryButton.IsEnabled = true;
             OpenInSteamButton.IsEnabled = true;
             SaveModInfoButton.IsEnabled = false;
