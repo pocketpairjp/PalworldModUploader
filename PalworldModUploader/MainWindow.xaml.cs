@@ -48,7 +48,7 @@ public partial class MainWindow : Window
     private const string WorkshopAgreementUrl = "https://steamcommunity.com/sharedfiles/workshoplegalagreement";
 
     private readonly ObservableCollection<ModDirectoryEntry> _modEntries = new();
-    private readonly Dictionary<string, ulong> _subscribedFolders = new(StringComparer.OrdinalIgnoreCase);
+    private ulong[] _subscribedItemIds = Array.Empty<ulong>();
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         AllowTrailingCommas = true,
@@ -116,7 +116,7 @@ public partial class MainWindow : Window
         WorkshopDirTextBox.Text = _workshopContentDirectory;
         LoadModsFromDirectory(_workshopContentDirectory);
 
-        if (!foundSubscribed && _subscribedFolders.Count == 0)
+        if (!foundSubscribed && _subscribedItemIds.Length == 0)
         {
             StatusTextBlock.Text = "No workshop subscriptions were detected via Steam. Using the configured directory.";
         }
@@ -156,7 +156,9 @@ public partial class MainWindow : Window
 
     private async Task<bool> RefreshSubscribedItemsAsync()
     {
-        _subscribedFolders.Clear();
+        _subscribedItemIds = Array.Empty<ulong>();
+
+        var subscribedItemIds = new List<ulong>();
 
         uint pageNumber = 1;
         uint processedResults = 0;
@@ -189,7 +191,7 @@ public partial class MainWindow : Window
                 receivedAnyResult = receivedAnyResult || data.m_unNumResultsReturned > 0 || data.m_unTotalMatchingResults > 0;
 
                 totalResults = data.m_unTotalMatchingResults;
-                ProcessSubscriptionResults(data);
+                ProcessSubscriptionResults(data, subscribedItemIds);
 
                 processedResults += data.m_unNumResultsReturned;
                 if (processedResults >= totalResults || data.m_unNumResultsReturned == 0)
@@ -205,7 +207,9 @@ public partial class MainWindow : Window
             }
         }
 
-        return receivedAnyResult && _subscribedFolders.Count > 0;
+        _subscribedItemIds = subscribedItemIds.ToArray();
+
+        return receivedAnyResult && _subscribedItemIds.Length > 0;
     }
 
     private async Task<(SteamUGCQueryCompleted_t Data, bool IoFailure)?> SendSubscribedItemsQueryAsync(uint pageNumber)
@@ -251,7 +255,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ProcessSubscriptionResults(SteamUGCQueryCompleted_t data)
+    private void ProcessSubscriptionResults(SteamUGCQueryCompleted_t data, ICollection<ulong> subscribedItemIds)
     {
         for (uint i = 0; i < data.m_unNumResultsReturned; i++)
         {
@@ -285,7 +289,7 @@ public partial class MainWindow : Window
             }
 
             _workshopContentDirectory ??= parentDirectory.FullName;
-            _subscribedFolders[modDirectory.FullName] = publishedFileId.m_PublishedFileId;
+            subscribedItemIds.Add(publishedFileId.m_PublishedFileId);
         }
     }
 
@@ -384,10 +388,10 @@ public partial class MainWindow : Window
                 var dirInfo = new DirectoryInfo(directory);
                 var entry = new ModDirectoryEntry(dirInfo.Name, dirInfo.FullName);
 
-                if (_subscribedFolders.TryGetValue(dirInfo.FullName, out var subscribedId))
+                if (ulong.TryParse(dirInfo.Name, out var directoryId) && _subscribedItemIds.Contains(directoryId))
                 {
                     entry.IsSubscribed = true;
-                    entry.SubscribedPublishedFileId = subscribedId;
+                    entry.SubscribedPublishedFileId = directoryId;
                 }
                 else
                 {
@@ -662,7 +666,7 @@ public partial class MainWindow : Window
         PersistWorkshopDirectory(_workshopContentDirectory);
         LoadModsFromDirectory(_workshopContentDirectory);
 
-        if (!foundSubscribed && _subscribedFolders.Count == 0)
+        if (!foundSubscribed && _subscribedItemIds.Length == 0)
         {
             StatusTextBlock.Text = "No workshop subscriptions were detected via Steam. Loaded the configured directory.";
         }
