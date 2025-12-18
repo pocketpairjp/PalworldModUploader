@@ -265,7 +265,7 @@ public partial class MainWindow : Window
             }
 
             var publishedFileId = details.m_nPublishedFileId;
-            var isOwnedByUser = details.m_ulSteamIDOwner == SteamUser.GetSteamID().GetAccountID();
+            var isOwnedByUser = details.m_ulSteamIDOwner == SteamUser.GetSteamID().m_SteamID;
             subscribedItemIds[publishedFileId.m_PublishedFileId] = isOwnedByUser;
         }
     }
