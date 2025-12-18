@@ -11,7 +11,6 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
 
     private ModInfo? _info;
     private WorkshopMetadata? _metadata;
-    private bool _isSubscribed;
     private string? _infoLoadError;
     private ulong? _subscribedPublishedFileId;
 
@@ -75,21 +74,6 @@ public sealed class ModDirectoryEntry : INotifyPropertyChanged
             _subscribedPublishedFileId = value;
             OnPropertyChanged(nameof(SubscribedPublishedFileId));
             OnPropertyChanged(nameof(PublishedFileId));
-        }
-    }
-
-    public bool IsSubscribed
-    {
-        get => _isSubscribed;
-        set
-        {
-            if (_isSubscribed == value)
-            {
-                return;
-            }
-
-            _isSubscribed = value;
-            OnPropertyChanged(nameof(IsSubscribed));
         }
     }
 
