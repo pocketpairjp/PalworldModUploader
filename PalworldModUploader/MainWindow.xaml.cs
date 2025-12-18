@@ -265,30 +265,6 @@ public partial class MainWindow : Window
             }
 
             var publishedFileId = details.m_nPublishedFileId;
-            var state = (EItemState)SteamUGC.GetItemState(publishedFileId);
-            if (!state.HasFlag(EItemState.k_EItemStateInstalled))
-            {
-                continue;
-            }
-
-            if (!SteamUGC.GetItemInstallInfo(publishedFileId, out _, out var installFolder, 1024u, out _))
-            {
-                continue;
-            }
-
-            if (!Directory.Exists(installFolder))
-            {
-                continue;
-            }
-
-            var modDirectory = new DirectoryInfo(installFolder);
-            var parentDirectory = modDirectory.Parent;
-            if (parentDirectory == null)
-            {
-                continue;
-            }
-
-            _workshopContentDirectory ??= parentDirectory.FullName;
             subscribedItemIds.Add(publishedFileId.m_PublishedFileId);
         }
     }
