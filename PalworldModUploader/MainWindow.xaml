@@ -318,6 +318,48 @@
                                          Background="#F5F5F5"
                                          VerticalContentAlignment="Center" />
                             </DockPanel>
+
+                            <!-- Tags -->
+                            <TextBlock Text="Tags"
+                                       Margin="0,16,0,0"
+                                       FontWeight="Bold" />
+                            <StackPanel Margin="0,4,0,0">
+                                <CheckBox x:Name="TagPalSchemaCheckBox"
+                                          Content="PalSchema"
+                                          IsEnabled="False"
+                                          Checked="TagCheckBox_Changed"
+                                          Unchecked="TagCheckBox_Changed" />
+                                <CheckBox x:Name="TagUE4SSCheckBox"
+                                          Content="UE4SS"
+                                          IsEnabled="False"
+                                          Margin="0,4,0,0"
+                                          Checked="TagCheckBox_Changed"
+                                          Unchecked="TagCheckBox_Changed" />
+                                <CheckBox x:Name="TagModelReplacementCheckBox"
+                                          Content="Model Replacement"
+                                          IsEnabled="False"
+                                          Margin="0,4,0,0"
+                                          Checked="TagCheckBox_Changed"
+                                          Unchecked="TagCheckBox_Changed" />
+                                <CheckBox x:Name="TagUtilitiesCheckBox"
+                                          Content="Utilities"
+                                          IsEnabled="False"
+                                          Margin="0,4,0,0"
+                                          Checked="TagCheckBox_Changed"
+                                          Unchecked="TagCheckBox_Changed" />
+                                <CheckBox x:Name="TagGameplayCheckBox"
+                                          Content="Gameplay"
+                                          IsEnabled="False"
+                                          Margin="0,4,0,0"
+                                          Checked="TagCheckBox_Changed"
+                                          Unchecked="TagCheckBox_Changed" />
+                                <CheckBox x:Name="TagUserInterfaceCheckBox"
+                                          Content="User Interface"
+                                          IsEnabled="False"
+                                          Margin="0,4,0,0"
+                                          Checked="TagCheckBox_Changed"
+                                          Unchecked="TagCheckBox_Changed" />
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>

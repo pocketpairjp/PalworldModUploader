@@ -76,6 +76,7 @@ PalSchemaに依存するModで利用されます。たいていの場合、UE4SS
 | MinRevision  | 動作に必要な最小リビジョン タイトルで表示されるバージョンの下5桁と対応します |
 | Author       | 作者名                                     |
 | Dependencies | このModが依存する他のModのパッケージ名の配列               |
+| Tags         | Steam Workshopのタグ（PalSchema, UE4SS, Model Replacement, Utilities, Gameplay, User Interface） |
 | Install Rule Types  | Modのインストール方法 手動で変更した場合、操作出来ません |
 
 編集後は `Save Info.json` を押して保存します。

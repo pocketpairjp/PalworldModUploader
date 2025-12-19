@@ -37,6 +37,7 @@ https://docs.palworldgame.com/ja/
   "MinRevision": 82182,
   "Author": "pocketpair_dev",
   "Dependencies": [],
+  "Tags": [],
   "InstallRule": [
     {
       "Type": "Lua",
@@ -57,6 +58,7 @@ https://docs.palworldgame.com/ja/
 | MinRevision  | 動作に必要な最小リビジョン タイトルで表示されるバージョンの下5桁と対応します |
 | Author       | 作者名                                     |
 | Dependencies | このModが依存する他のModのパッケージ名の配列               |
+| Tags         | Steam Workshopのタグの配列（PalSchema, UE4SS, Model Replacement, Utilities, Gameplay, User Interface） |
 | InstallRule  | Modのインストール方法                            |
 
 Palworld Mod Uploaderを利用した場合は、GUI経由で設定を行うことができます。手動で設定したい場合など、詳細な仕様については **04-Tech.md** を参照してください。

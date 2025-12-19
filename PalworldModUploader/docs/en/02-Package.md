@@ -37,6 +37,7 @@ The `Info.json` file is a JSON file that contains metadata required for the offi
   "MinRevision": 82182,
   "Author": "pocketpair_dev",
   "Dependencies": [],
+  "Tags": [],
   "InstallRule": [
     {
       "Type": "Lua",
@@ -57,6 +58,7 @@ The `Info.json` file is a JSON file that contains metadata required for the offi
 | MinRevision  | Minimum revision required. This corresponds to the last 5 digits of the version shown in the title. |
 | Author       | Author name |
 | Dependencies | Array of other mod package names this mod depends on |
+| Tags         | Array of Steam Workshop tags (PalSchema, UE4SS, Model Replacement, Utilities, Gameplay, User Interface) |
 | InstallRule  | Mod installation rules |
 
 If you use Palworld Mod Uploader, you can configure these via the GUI. For detailed specifications (for example, manual editing), refer to **04-Tech.md**.

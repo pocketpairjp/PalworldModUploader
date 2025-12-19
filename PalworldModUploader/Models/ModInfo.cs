@@ -26,6 +26,10 @@ public sealed class ModInfo
     [JsonPropertyName("Dependencies")]
     public string[]? Dependencies { get; set; }
 
+    [JsonPropertyName("Tags")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? Tags { get; set; }
+
     [JsonPropertyName("InstallRule")]
     public InstallRule[]? InstallRule { get; set; }
 }

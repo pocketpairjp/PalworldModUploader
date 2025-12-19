@@ -511,6 +511,24 @@ public partial class MainWindow : Window
             _selectedDependencies = _selectedEntry.Info?.Dependencies;
             UpdateDependenciesDisplay();
 
+            // Update Tags checkboxes based on current Info.json
+            var tagSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var tag in _selectedEntry.Info?.Tags ?? Array.Empty<string>())
+            {
+                var trimmed = tag?.Trim();
+                if (!string.IsNullOrWhiteSpace(trimmed))
+                {
+                    tagSet.Add(trimmed);
+                }
+            }
+
+            TagPalSchemaCheckBox.IsChecked = tagSet.Contains("PalSchema");
+            TagUE4SSCheckBox.IsChecked = tagSet.Contains("UE4SS");
+            TagModelReplacementCheckBox.IsChecked = tagSet.Contains("Model Replacement");
+            TagUtilitiesCheckBox.IsChecked = tagSet.Contains("Utilities");
+            TagGameplayCheckBox.IsChecked = tagSet.Contains("Gameplay");
+            TagUserInterfaceCheckBox.IsChecked = tagSet.Contains("User Interface");
+
             var canEdit = true;
             ModNameTextBox.IsEnabled = canEdit;
             PackageNameTextBox.IsEnabled = canEdit;
@@ -521,6 +539,12 @@ public partial class MainWindow : Window
             ThumbnailDropArea.AllowDrop = canEdit;
             ThumbnailDropArea.Cursor = canEdit ? System.Windows.Input.Cursors.Hand : System.Windows.Input.Cursors.Arrow;
             EditDependenciesButton.IsEnabled = canEdit;
+            TagPalSchemaCheckBox.IsEnabled = canEdit;
+            TagUE4SSCheckBox.IsEnabled = canEdit;
+            TagModelReplacementCheckBox.IsEnabled = canEdit;
+            TagUtilitiesCheckBox.IsEnabled = canEdit;
+            TagGameplayCheckBox.IsEnabled = canEdit;
+            TagUserInterfaceCheckBox.IsEnabled = canEdit;
 
             // InstallRule checkboxes: only enable if editable AND InstallRules are standard
             var canEditInstallRules = canEdit && isInstallRuleStandard;
@@ -579,6 +603,18 @@ public partial class MainWindow : Window
             _selectedDependencies = null;
             DependenciesTextBox.Text = string.Empty;
             EditDependenciesButton.IsEnabled = false;
+            TagPalSchemaCheckBox.IsChecked = false;
+            TagUE4SSCheckBox.IsChecked = false;
+            TagModelReplacementCheckBox.IsChecked = false;
+            TagUtilitiesCheckBox.IsChecked = false;
+            TagGameplayCheckBox.IsChecked = false;
+            TagUserInterfaceCheckBox.IsChecked = false;
+            TagPalSchemaCheckBox.IsEnabled = false;
+            TagUE4SSCheckBox.IsEnabled = false;
+            TagModelReplacementCheckBox.IsEnabled = false;
+            TagUtilitiesCheckBox.IsEnabled = false;
+            TagGameplayCheckBox.IsEnabled = false;
+            TagUserInterfaceCheckBox.IsEnabled = false;
 
             UploadButton.IsEnabled = false;
             OpenModDirectoryButton.IsEnabled = false;
@@ -969,6 +1005,19 @@ public partial class MainWindow : Window
         {
             SteamUGC.SetItemPreview(handle, thumbnailPath);
         }
+
+        // Backward-compat: if the Tags key is missing, do not modify Workshop tags on upload.
+        if (info.Tags is { } tags)
+        {
+            var cleanedTags = tags
+                .Select(tag => tag?.Trim())
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Select(tag => tag!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            SteamUGC.SetItemTags(handle, cleanedTags);
+        }
     }
 
     private void OnItemCreated(CreateItemResult_t callback, bool ioFailure)
@@ -1279,6 +1328,7 @@ public partial class MainWindow : Window
             Version = "1.0.0",
             MinRevision = 82182,
             Dependencies = Array.Empty<string>(),
+            Tags = Array.Empty<string>(),
             InstallRule = installRules.ToArray()
         };
 
@@ -1513,6 +1563,17 @@ public partial class MainWindow : Window
         SaveModInfoButton.IsEnabled = true;
     }
 
+    private void TagCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingModDetails || _selectedEntry == null)
+        {
+            return;
+        }
+
+        _hasUnsavedChanges = true;
+        SaveModInfoButton.IsEnabled = true;
+    }
+
     private bool ConfirmDiscardUnsavedChanges()
     {
         if (!_hasUnsavedChanges)
@@ -1602,6 +1663,35 @@ public partial class MainWindow : Window
 
             // Update Dependencies
             info.Dependencies = _selectedDependencies is { Length: > 0 } ? _selectedDependencies : null;
+
+            // Update Tags
+            var selectedTags = new List<string>();
+            if (TagPalSchemaCheckBox.IsChecked == true)
+            {
+                selectedTags.Add("PalSchema");
+            }
+            if (TagUE4SSCheckBox.IsChecked == true)
+            {
+                selectedTags.Add("UE4SS");
+            }
+            if (TagModelReplacementCheckBox.IsChecked == true)
+            {
+                selectedTags.Add("Model Replacement");
+            }
+            if (TagUtilitiesCheckBox.IsChecked == true)
+            {
+                selectedTags.Add("Utilities");
+            }
+            if (TagGameplayCheckBox.IsChecked == true)
+            {
+                selectedTags.Add("Gameplay");
+            }
+            if (TagUserInterfaceCheckBox.IsChecked == true)
+            {
+                selectedTags.Add("User Interface");
+            }
+
+            info.Tags = (info.Tags == null && selectedTags.Count == 0) ? null : selectedTags.ToArray();
 
             // Update InstallRule based on checkboxes
             if (IsInstallRuleStandard(existingInstallRules))

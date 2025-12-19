@@ -76,6 +76,7 @@ Fields
 | MinRevision  | Minimum revision required. This corresponds to the last 5 digits of the version shown in the title. |
 | Author       | Author name |
 | Dependencies | Array of other mod package names this mod depends on |
+| Tags         | Steam Workshop tags (PalSchema, UE4SS, Model Replacement, Utilities, Gameplay, User Interface) |
 | Install Rule Types  | Mod installation methods. If changed manually, you cannot edit it in the UI. |
 
 After editing, press `Save Info.json` to save.
