@@ -847,6 +847,12 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!ConfirmFirstContentUpload(_selectedEntry))
+        {
+            StatusTextBlock.Text = "Upload canceled by user.";
+            return;
+        }
+
         // Prompt for change notes before starting upload
         var changeNotesDialog = new ChangeNotesWindow { Owner = this };
         if (changeNotesDialog.ShowDialog() != true)
@@ -976,6 +982,25 @@ public partial class MainWindow : Window
         }
 
         return true;
+    }
+
+    private bool ConfirmFirstContentUpload(ModDirectoryEntry entry)
+    {
+        var metadata = entry.Metadata;
+        if (metadata?.LastPublishedVersion != null)
+        {
+            return true;
+        }
+
+        var res = MessageBox.Show(
+            "Palworld prohibits uploading the following content to the Steam Workshop:\n\n" +
+            "- Mods designed to intentionally behave inappropriately\n" +
+            "- NSFW mods\n\n" +
+            "Are you sure the mod you are about to upload does not include any of this content?",
+            "Workshop Content Policy",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+        return res == MessageBoxResult.OK;
     }
 
     private static string? GetPublishedFileId(ModDirectoryEntry entry)
