@@ -27,6 +27,12 @@ namespace PalworldModUploader;
 public partial class MainWindow : Window
 {
     private const uint PalworldAppId = 1623730;
+    private const long ThumbnailMaxBytes = 1L * 1024 * 1024;
+    private const int ThumbnailResizeMaxAttempts = 12;
+    private const double ThumbnailResizeScaleStep = 0.85;
+    private const double ThumbnailResizeMinScale = 0.01;
+    private const int ThumbnailJpegMinQuality = 60;
+    private const int ThumbnailJpegQualityStep = 10;
     private const string WorkshopPathCacheFileName = "workshop_path.txt";
     private static readonly string DefaultSteamWorkshopPath = Path.Combine(
         @"C:\Program Files (x86)\Steam",
@@ -1517,6 +1523,145 @@ public partial class MainWindow : Window
         return extension is ".png" or ".jpg" or ".jpeg" or ".gif";
     }
 
+    private static bool TrySaveThumbnailWithinLimit(string sourcePath, string targetPath, out bool resized, out string? error)
+    {
+        resized = false;
+        error = null;
+
+        if (!File.Exists(sourcePath))
+        {
+            error = "Selected thumbnail file was not found.";
+            return false;
+        }
+
+        var sourceInfo = new FileInfo(sourcePath);
+        if (sourceInfo.Length <= ThumbnailMaxBytes)
+        {
+            if (!IsSameFilePath(sourcePath, targetPath))
+            {
+                File.Copy(sourcePath, targetPath, true);
+            }
+
+            return true;
+        }
+
+        return TryResizeThumbnail(sourcePath, targetPath, out resized, out error);
+    }
+
+    private static bool TryResizeThumbnail(string sourcePath, string targetPath, out bool resized, out string? error)
+    {
+        resized = false;
+        error = null;
+
+        try
+        {
+            BitmapFrame frame;
+            using (var stream = File.OpenRead(sourcePath))
+            {
+                var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                frame = decoder.Frames[0];
+                frame.Freeze();
+            }
+
+            var extension = Path.GetExtension(targetPath).ToLowerInvariant();
+            if (!IsImageFile(targetPath))
+            {
+                extension = ".png";
+            }
+
+            var sourceSize = new FileInfo(sourcePath).Length;
+            var scale = Math.Sqrt((double)ThumbnailMaxBytes / sourceSize);
+            scale = Math.Min(scale, 0.95);
+
+            var minScale = Math.Max(ThumbnailResizeMinScale,
+                Math.Max(1.0 / Math.Max(1, frame.PixelWidth), 1.0 / Math.Max(1, frame.PixelHeight)));
+            if (scale < minScale)
+            {
+                scale = minScale;
+            }
+
+            var quality = 90;
+            for (var attempt = 0; attempt < ThumbnailResizeMaxAttempts; attempt++)
+            {
+                var scaled = ScaleBitmap(frame, scale);
+                var encoded = EncodeBitmap(scaled, extension, quality);
+
+                if (encoded.Length <= ThumbnailMaxBytes)
+                {
+                    WriteFileSafely(targetPath, encoded);
+                    resized = true;
+                    return true;
+                }
+
+                if ((extension == ".jpg" || extension == ".jpeg") && quality > ThumbnailJpegMinQuality)
+                {
+                    quality = Math.Max(ThumbnailJpegMinQuality, quality - ThumbnailJpegQualityStep);
+                    continue;
+                }
+
+                if (scale <= minScale)
+                {
+                    break;
+                }
+
+                scale *= ThumbnailResizeScaleStep;
+                if (scale < minScale)
+                {
+                    scale = minScale;
+                }
+            }
+
+            error = "Thumbnail could not be resized under 1MB. Please use a smaller image.";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    private static BitmapSource ScaleBitmap(BitmapSource source, double scale)
+    {
+        if (scale >= 0.999)
+        {
+            return source;
+        }
+
+        var transform = new ScaleTransform(scale, scale);
+        var scaled = new TransformedBitmap(source, transform);
+        scaled.Freeze();
+        return scaled;
+    }
+
+    private static byte[] EncodeBitmap(BitmapSource source, string extension, int jpegQuality)
+    {
+        BitmapEncoder encoder = extension switch
+        {
+            ".jpg" or ".jpeg" => new JpegBitmapEncoder { QualityLevel = jpegQuality },
+            ".gif" => new GifBitmapEncoder(),
+            _ => new PngBitmapEncoder()
+        };
+
+        encoder.Frames.Add(BitmapFrame.Create(source));
+        using var stream = new MemoryStream();
+        encoder.Save(stream);
+        return stream.ToArray();
+    }
+
+    private static void WriteFileSafely(string targetPath, byte[] data)
+    {
+        var directory = Path.GetDirectoryName(targetPath) ?? string.Empty;
+        if (directory.Length > 0)
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var tempPath = Path.Combine(directory, $"{Path.GetFileName(targetPath)}.tmp");
+        File.WriteAllBytes(tempPath, data);
+        File.Move(tempPath, targetPath, true);
+    }
+
     /// <summary>
     /// Checks if the given InstallRule array contains only standard entries that can be managed by UI checkboxes.
     /// Returns false if there are unknown types (e.g., UE4SS) or custom targets.
@@ -1670,13 +1815,15 @@ public partial class MainWindow : Window
             info.MinRevision = minRevision;
             info.Author = AuthorTextBox.Text.Trim();
 
+            var thumbnailResized = false;
             // Handle thumbnail changes (only commit to disk when saving)
             if (_pendingThumbnailSourcePath is { } pendingThumbnail && _pendingThumbnailFileName is { Length: > 0 } pendingFileName)
             {
                 var targetPath = Path.Combine(_selectedEntry.FullPath, pendingFileName);
-                if (!IsSameFilePath(pendingThumbnail, targetPath))
+                if (!TrySaveThumbnailWithinLimit(pendingThumbnail, targetPath, out thumbnailResized, out var thumbnailError))
                 {
-                    File.Copy(pendingThumbnail, targetPath, true);
+                    MessageBox.Show($"Failed to save thumbnail: {thumbnailError}", "Thumbnail Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
                 info.Thumbnail = pendingFileName;
                 DisplayThumbnail(targetPath);
@@ -1767,7 +1914,9 @@ public partial class MainWindow : Window
 
             _hasUnsavedChanges = false;
             SaveModInfoButton.IsEnabled = false;
-            StatusTextBlock.Text = "Info.json saved successfully.";
+            StatusTextBlock.Text = thumbnailResized
+                ? "Info.json saved successfully. Thumbnail was resized to meet Steam's 1MB limit."
+                : "Info.json saved successfully.";
         }
         catch (Exception ex)
         {
