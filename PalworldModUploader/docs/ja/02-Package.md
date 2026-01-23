@@ -34,6 +34,7 @@ https://docs.palworldgame.com/ja/
   "PackageName": "UltraFastHandiworkQuivern",
   "Thumbnail": "thumbnail.png",
   "Version": "1.0.0-1",
+  "DebugMode": false,
   "MinRevision": 82182,
   "Author": "pocketpair_dev",
   "Dependencies": [],
@@ -55,6 +56,7 @@ https://docs.palworldgame.com/ja/
 | PackageName  | パッケージ名                                  |
 | Thumbnail    | ゲーム内やSteam上で表示される画像                     |
 | Version      | Modパッケージのバージョン                          |
+| DebugMode    | true の場合は起動時に毎回アンインストール → 再インストールされます（Versionが同じでも再コピー） |
 | MinRevision  | 動作に必要な最小リビジョン タイトルで表示されるバージョンの下5桁と対応します |
 | Author       | 作者名                                     |
 | Dependencies | このModが依存する他のModのパッケージ名の配列               |

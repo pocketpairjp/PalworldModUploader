@@ -73,6 +73,7 @@ PalSchemaに依存するModで利用されます。たいていの場合、UE4SS
 | Package Name  | パッケージ名  英数字（`A-Z`, `a-z`, `0-9`）のみである必要があります。|
 | Thumbnail    | ゲーム内やSteam上で表示される画像                     |
 | Version      | Modパッケージのバージョン                          |
+| Debug Mode   | true の場合は起動時に毎回アンインストール → 再インストールされます（Versionが同じでも再コピー） |
 | MinRevision  | 動作に必要な最小リビジョン タイトルで表示されるバージョンの下5桁と対応します |
 | Author       | 作者名                                     |
 | Dependencies | このModが依存する他のModのパッケージ名の配列               |
