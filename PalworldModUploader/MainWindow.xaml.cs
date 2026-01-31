@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -484,6 +485,7 @@ public partial class MainWindow : Window
             ModNameTextBox.Text = _selectedEntry.ModName ?? string.Empty;
             PackageNameTextBox.Text = _selectedEntry.PackageName ?? string.Empty;
             VersionTextBox.Text = _selectedEntry.Info?.Version ?? string.Empty;
+            DebugModeCheckBox.IsChecked = _selectedEntry.Info?.DebugMode == true;
             MinRevisionTextBox.Text = _selectedEntry.Info?.MinRevision?.ToString() ?? string.Empty;
             AuthorTextBox.Text = _selectedEntry.Author ?? string.Empty;
 
@@ -539,6 +541,7 @@ public partial class MainWindow : Window
             ModNameTextBox.IsEnabled = canEdit;
             PackageNameTextBox.IsEnabled = canEdit;
             VersionTextBox.IsEnabled = canEdit;
+            DebugModeCheckBox.IsEnabled = canEdit;
             MinRevisionTextBox.IsEnabled = canEdit;
             AuthorTextBox.IsEnabled = canEdit;
             ThumbnailDropArea.IsEnabled = canEdit;
@@ -582,6 +585,7 @@ public partial class MainWindow : Window
             ModNameTextBox.Text = string.Empty;
             PackageNameTextBox.Text = string.Empty;
             VersionTextBox.Text = string.Empty;
+            DebugModeCheckBox.IsChecked = false;
             MinRevisionTextBox.Text = string.Empty;
             AuthorTextBox.Text = string.Empty;
             ThumbnailImage.Source = null;
@@ -590,6 +594,7 @@ public partial class MainWindow : Window
             ModNameTextBox.IsEnabled = false;
             PackageNameTextBox.IsEnabled = false;
             VersionTextBox.IsEnabled = false;
+            DebugModeCheckBox.IsEnabled = false;
             MinRevisionTextBox.IsEnabled = false;
             AuthorTextBox.IsEnabled = false;
             ThumbnailDropArea.IsEnabled = false;
@@ -869,6 +874,12 @@ public partial class MainWindow : Window
 
         var enteredChangeNotes = changeNotesDialog.ChangeNotesText?.Trim() ?? string.Empty;
 
+        if (!EnsureDebugModeDisabledForUpload(_selectedEntry))
+        {
+            StatusTextBlock.Text = "Upload canceled because DebugMode could not be disabled.";
+            return;
+        }
+
         _currentPack = new WorkshopModPack
         {
             Entry = _selectedEntry,
@@ -1007,6 +1018,64 @@ public partial class MainWindow : Window
             MessageBoxButton.OKCancel,
             MessageBoxImage.Warning);
         return res == MessageBoxResult.OK;
+    }
+
+    private bool EnsureDebugModeDisabledForUpload(ModDirectoryEntry entry)
+    {
+        var infoPath = Path.Combine(entry.FullPath, "Info.json");
+        if (!File.Exists(infoPath))
+        {
+            MessageBox.Show("Info.json could not be found.", "Upload Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        try
+        {
+            var jsonText = File.ReadAllText(infoPath);
+            var documentOptions = new JsonDocumentOptions
+            {
+                AllowTrailingCommas = true,
+                CommentHandling = JsonCommentHandling.Skip
+            };
+
+            if (JsonNode.Parse(jsonText, nodeOptions: null, documentOptions) is not JsonObject root)
+            {
+                MessageBox.Show("Info.json must be a JSON object.", "Upload Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            var debugNode = root["DebugMode"];
+            var debugValue = debugNode is JsonValue value && value.TryGetValue<bool>(out var parsed)
+                ? parsed
+                : (bool?)null;
+
+            if (debugValue == true)
+            {
+                root["DebugMode"] = false;
+                var updatedJson = root.ToJsonString(_jsonOptions);
+                File.WriteAllText(infoPath, updatedJson);
+            }
+
+            if (entry.Info != null)
+            {
+                entry.Info.DebugMode = false;
+            }
+
+            if (DebugModeCheckBox.IsChecked != false)
+            {
+                var wasUpdating = _isUpdatingModDetails;
+                _isUpdatingModDetails = true;
+                DebugModeCheckBox.IsChecked = false;
+                _isUpdatingModDetails = wasUpdating;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to disable DebugMode before upload: {ex.Message}", "Upload Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
     }
 
     private static string? GetPublishedFileId(ModDirectoryEntry entry)
@@ -1357,6 +1426,7 @@ public partial class MainWindow : Window
             Author = SteamFriends.GetPersonaName(),
             Thumbnail = "thumbnail.png",
             Version = "1.0.0",
+            DebugMode = false,
             MinRevision = 82182,
             Dependencies = Array.Empty<string>(),
             Tags = Array.Empty<string>(),
@@ -1744,6 +1814,17 @@ public partial class MainWindow : Window
         SaveModInfoButton.IsEnabled = true;
     }
 
+    private void DebugModeCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingModDetails || _selectedEntry == null)
+        {
+            return;
+        }
+
+        _hasUnsavedChanges = true;
+        SaveModInfoButton.IsEnabled = true;
+    }
+
     private bool ConfirmDiscardUnsavedChanges()
     {
         if (!_hasUnsavedChanges)
@@ -1812,6 +1893,7 @@ public partial class MainWindow : Window
             info.ModName = ModNameTextBox.Text.Trim();
             info.PackageName = PackageNameTextBox.Text.Trim();
             info.Version = VersionTextBox.Text.Trim();
+            info.DebugMode = DebugModeCheckBox.IsChecked == true;
             info.MinRevision = minRevision;
             info.Author = AuthorTextBox.Text.Trim();
 

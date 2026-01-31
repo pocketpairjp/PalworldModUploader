@@ -37,6 +37,10 @@ When a mod is extracted into its installation location based on Install Type, th
 **Mods with Package Name restrictions**
 The PalSchema core must have the Package Name set to PalSchema. This is because mods that depend on PalSchema are always extracted to `Mods\NativeMods\UE4SS\Mods\PalSchema\mods`.
 
+### Debug Mode
+
+You can set `DebugMode` in Info.json. If `true`, the mod is uninstalled and reinstalled (recopied from Workshop) on every launch. If `false` or omitted, the mod is reinstalled only when Version changes.
+
 ### Install Rules & Types
 
 Install Rules are an array of objects used to configure where mods included in the package are placed.
@@ -108,6 +112,8 @@ The official mod loader compares the Version in the package's Info.json in the W
 Because of this, the Version value does not need to strictly match the mod's internal version, and you do not need to use semantic versioning.
 
 As a mod author, when updating a mod, you should change Version before uploading the update (unless you have a special reason not to).
+
+If Info.json sets `DebugMode` to true, the mod is reinstalled on every launch even when Version is unchanged.
 
 ---
 
