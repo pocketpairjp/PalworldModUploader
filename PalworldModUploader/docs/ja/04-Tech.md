@@ -37,6 +37,10 @@ Install Typeに応じたインストール先に展開される際、Modを含�
 **Package Name に制約のあるMod**
 PalSchema本体は、Package Nameを必ずPalSchemaにする必要があります。これは、PalSchemaに依存するModが必ず `Mods\NativeMods\UE4SS\Mods\PalSchema\mods` に展開されるためです。
 
+### Debug Mode
+
+Info.json に `DebugMode` を指定できます。`true` の場合、起動時に毎回アンインストール → 再インストール（Workshopから再コピー）が行われます。`false` または未指定の場合は、Version差分があるときのみ再インストールされます。
+
 ### Install Rules & Types
 
 Install Rulesは、パッケージに含まれているModをどこに配置するかを設定するためのオブジェクトの配列です。
@@ -108,6 +112,8 @@ Targetsを変更することで、1つのModパッケージでゲーム本体・
 そのため、Versionに指定する値は厳密にMod本体のバージョンと一致している必要は無く、セマンティックバージョニングを採用する必要もありません。
 
 Mod作者としてModをアップデートする場合は、特殊な目的がある場合を除き、Versionを変更してからアップデートする必要があります。
+
+なお、Info.json の `DebugMode` が true の場合は、Versionが同じでも起動時に毎回再インストールされます。
 
 ---
 

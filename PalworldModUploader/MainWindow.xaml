@@ -245,6 +245,17 @@
                                      IsEnabled="False"
                                      TextChanged="ModInfoField_TextChanged" />
 
+                            <!-- Debug Mode -->
+                            <TextBlock Text="Debug Mode"
+                                       Margin="0,12,0,0"
+                                       FontWeight="Bold" />
+                            <CheckBox x:Name="DebugModeCheckBox"
+                                      Content="Reinstall on every launch"
+                                      Margin="0,4,0,0"
+                                      IsEnabled="False"
+                                      Checked="DebugModeCheckBox_Changed"
+                                      Unchecked="DebugModeCheckBox_Changed" />
+
                             <!-- MinRevision -->
                             <TextBlock Text="MinRevision"
                                        Margin="0,12,0,0"

@@ -73,6 +73,7 @@ Fields
 | Package Name  | Package name. It must contain only alphanumerics (`A-Z`, `a-z`, `0-9`). |
 | Thumbnail    | Image shown in-game and on Steam |
 | Version      | Mod package version |
+| Debug Mode   | If true, the mod is uninstalled and reinstalled on every launch (even if Version is unchanged). |
 | MinRevision  | Minimum revision required. This corresponds to the last 5 digits of the version shown in the title. |
 | Author       | Author name |
 | Dependencies | Array of other mod package names this mod depends on |

@@ -16,6 +16,9 @@ public sealed class ModInfo
     [JsonPropertyName("Version")]
     public string? Version { get; set; }
 
+    [JsonPropertyName("DebugMode")]
+    public bool DebugMode { get; set; }
+
     [JsonPropertyName("MinRevision")]
     public int? MinRevision { get; set; }
 
